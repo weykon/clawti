@@ -1,7 +1,11 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import { queryOne } from './db';
+import { verifyPassword, signJwt } from './authUtils';
+import { authConfig } from './auth.config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -9,40 +13,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
-        const res = await fetch(`${backendUrl}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: credentials.email,
-            password: credentials.password,
-          }),
-        });
-        if (!res.ok) return null;
-        const data = await res.json();
+        const email = (credentials.email as string)?.toLowerCase().trim();
+        const password = credentials.password as string;
+        if (!email || !password) return null;
+
+        const row = await queryOne<{ id: string; email: string; username: string; password_hash: string }>(
+          'SELECT id, email, username, password_hash FROM users WHERE email = $1',
+          [email]
+        );
+        if (!row) return null;
+
+        const valid = await verifyPassword(password, row.password_hash);
+        if (!valid) return null;
+
+        const token = signJwt({ userId: row.id, email: row.email });
         return {
-          id: data.user?.id || data.id,
-          email: data.user?.email || (credentials.email as string),
-          name: data.user?.username,
-          backendToken: data.token,
+          id: row.id,
+          email: row.email,
+          name: row.username,
+          backendToken: token,
         };
       },
     }),
   ],
-  session: { strategy: 'jwt' },
-  pages: { signIn: '/login' },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.backendToken = (user as any).backendToken;
-        token.userId = user.id;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      session.user.id = token.userId as string;
-      (session as any).backendToken = token.backendToken;
-      return session;
-    },
-  },
 });

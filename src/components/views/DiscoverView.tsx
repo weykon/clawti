@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
+import { useRouter } from 'next/navigation';
 import { Compass, Sparkles, Filter, X, Heart } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { useUIStore } from '../../store/useUIStore';
@@ -11,6 +12,7 @@ import { api } from '../../api/client';
 
 export function DiscoverView() {
   const t = useTranslation();
+  const router = useRouter();
   const language = useUIStore(s => s.language);
   const { setFilterOpen, setCharProfileOpen, setActiveView } = useUIStore();
   const { characters, friends, filters, discoverIndex, currentImageIndex, setCurrentImageIndex, addFriend, addSwipeIndex } = useCreatureStore();
@@ -30,6 +32,7 @@ export function DiscoverView() {
       }
       startChat(currentDiscoverChar);
       setActiveView('chat');
+      router.push('/chat');
     }
     addSwipeIndex();
   };
@@ -37,6 +40,7 @@ export function DiscoverView() {
   const handleStartChat = (char: typeof currentDiscoverChar) => {
     startChat(char);
     setActiveView('chat');
+    router.push('/chat');
   };
 
   return (
@@ -216,7 +220,10 @@ export function DiscoverView() {
                     {language === 'en' ? char.description_en || char.description : char.description}
                   </p>
                   <div className="pt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-500">
-                    <button className="w-full py-4 bg-white text-black rounded-2xl font-bold text-xs uppercase tracking-widest shadow-xl">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleStartChat(char); }}
+                      className="w-full py-4 bg-white text-black rounded-2xl font-bold text-xs uppercase tracking-widest shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all"
+                    >
                       {t.connectNow}
                     </button>
                   </div>
