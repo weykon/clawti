@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import type { View } from '../types';
+import { useAuthStore } from './useAuthStore';
 
 type Language = 'en' | 'zh';
 
@@ -57,7 +58,12 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
   setLanguage: (lang) => set({ language: lang }),
   toggleLanguage: () => set(s => ({ language: s.language === 'en' ? 'zh' : 'en' })),
   setActiveView: (view) => set({ activeView: view }),
-  setEnergy: (energy) => set({ energy }),
+  setEnergy: (energy) => {
+    set({ energy });
+    // Sync energy to profileData to prevent dual source of truth
+    const pd = useAuthStore.getState().profileData;
+    if (pd) useAuthStore.setState({ profileData: { ...pd, energy } });
+  },
   setNavExpanded: (v) => set({ isNavExpanded: v }),
   setFilterOpen: (v) => set({ isFilterOpen: v }),
   setFriendsListOpen: (v) => set({ isFriendsListOpen: v }),

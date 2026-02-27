@@ -67,7 +67,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const loadPublicDiscover = () => {
     api.creatures.discover({ limit: 50 }).then(res => {
-      const discovered = Array.isArray(res) ? res : (res?.creatures || []);
+      const discovered = res?.creatures || [];
       if (discovered.length > 0) setCharacters(discovered.map(creatureToCharacter));
     }).catch(() => {});
   };
@@ -83,7 +83,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         setProfileData(profileRes);
         setEnergy(profileRes.energy ?? 1000);
       }
-      const discovered = Array.isArray(discoverRes) ? discoverRes : (discoverRes?.creatures || []);
+      const discovered = discoverRes?.creatures || [];
       if (discovered.length > 0) {
         setCharacters(discovered.map(creatureToCharacter));
       }

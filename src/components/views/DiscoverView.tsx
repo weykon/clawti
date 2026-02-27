@@ -24,12 +24,10 @@ export function DiscoverView() {
 
   const handleSwipe = async (direction: 'left' | 'right') => {
     if (direction === 'right' && currentDiscoverChar) {
-      try {
-        await api.friends.add(currentDiscoverChar.id);
-        addFriend(currentDiscoverChar);
-      } catch (err) {
-        console.error('Failed to add friend:', err);
-      }
+      // Add friend via API; only update local state on success
+      api.friends.add(currentDiscoverChar.id)
+        .then(() => addFriend(currentDiscoverChar))
+        .catch(err => console.error('Failed to add friend:', err));
       startChat(currentDiscoverChar);
       setActiveView('chat');
       router.push('/chat');

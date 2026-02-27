@@ -124,7 +124,7 @@ class ApiClient {
       if (filters?.occupation) params.set('occupation', filters.occupation);
       if (filters?.limit) params.set('limit', String(filters.limit));
       const qs = params.toString();
-      return this.request<DiscoverResponse | BackendCreature[]>('GET', `/creatures/discover${qs ? '?' + qs : ''}`);
+      return this.request<DiscoverResponse>('GET', `/creatures/discover${qs ? '?' + qs : ''}`);
     },
     get: (id: string) => this.request<BackendCreature>('GET', `/creatures/${id}`),
     create: (data: CreateCreaturePayload) => this.request<CreateCreatureResponse>('POST', '/creatures', data),

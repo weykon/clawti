@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { query, queryOne } from '@/src/lib/db';
+import { requireAuth } from '@/src/lib/requireAuth';
 
 const ALAN_URL = process.env.ALAN_URL || 'http://localhost:7088';
 
 export async function POST(req: NextRequest) {
-  // TODO: Add auth check once NextAuth is wired up
-  // const session = await auth();
-  // if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let userId: string;
+  try {
+    ({ userId } = requireAuth(req));
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     const body = await req.json();
@@ -15,6 +20,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
+    // Check and deduct energy
+    const profile = await queryOne<{ energy: number }>(
+      'SELECT energy FROM user_profiles WHERE user_id = $1',
+      [userId]
+    );
+    if ((profile?.energy ?? 0) <= 0) {
+      return NextResponse.json({ error: 'Not enough energy' }, { status: 400 });
+    }
+    await query('UPDATE user_profiles SET energy = energy - 1 WHERE user_id = $1', [userId]);
+
+    // Persist user message before streaming
+    await query(
+      `INSERT INTO chat_messages (user_id, creature_id, role, content)
+       VALUES ($1, $2, 'user', $3)`,
+      [userId, characterId, message]
+    );
+
     // Build CoordinatorEvent for Alan
     const coordinatorEvent = {
       trigger: 'user_message',
@@ -22,7 +44,7 @@ export async function POST(req: NextRequest) {
       timestamp: new Date().toISOString(),
       metadata: {
         characterId,
-        // userId: session.user.id,
+        userId,
         conversationHistory,
       },
     };
@@ -52,11 +74,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No stream body from Alan' }, { status: 502 });
     }
 
-    // TODO: Deduct energy from user_profiles once DB is wired
-    // await query('UPDATE user_profiles SET energy = energy - 1 WHERE user_id = $1 AND energy > 0', [session.user.id]);
+    // Tee the stream: pipe to client + collect full response for persistence
+    let fullResponse = '';
+    const transformStream = new TransformStream({
+      transform(chunk, controller) {
+        controller.enqueue(chunk);
+        const text = new TextDecoder().decode(chunk);
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.t) fullResponse += parsed.t;
+          } catch {
+            // skip non-JSON
+          }
+        }
+      },
+      flush() {
+        // Persist the complete assistant reply after stream ends
+        if (fullResponse) {
+          query(
+            `INSERT INTO chat_messages (user_id, creature_id, role, content)
+             VALUES ($1, $2, 'assistant', $3)`,
+            [userId, characterId, fullResponse]
+          ).catch(err => console.error('Failed to persist stream reply:', err));
+        }
+      },
+    });
 
-    // Pipe the SSE stream directly back to the client
-    return new Response(alanRes.body, {
+    // Pipe the SSE stream through our transform and back to the client
+    return new Response(alanRes.body.pipeThrough(transformStream), {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',

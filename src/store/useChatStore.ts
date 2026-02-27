@@ -11,6 +11,7 @@ interface ChatState {
   isTyping: boolean;
   isStreaming: boolean;
   chatError: string | null;
+  chatReady: boolean;
 }
 
 interface ChatActions {
@@ -35,6 +36,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   isTyping: false,
   isStreaming: false,
   chatError: null,
+  chatReady: true,
 
   setSelectedCharacter: (char) => set({ selectedCharacter: char }),
   setInputText: (text) => set({ inputText: text }),
@@ -80,9 +82,12 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
     }),
 
   startChat: async (char) => {
-    set({ selectedCharacter: char });
+    set({ selectedCharacter: char, chatReady: false });
     const { messages } = get();
-    if (messages[char.id]) return;
+    if (messages[char.id]) {
+      set({ chatReady: true });
+      return;
+    }
 
     try {
       const res = await api.chat.messages(char.id);
@@ -96,13 +101,14 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       }));
 
       if (msgs.length > 0) {
-        set(s => ({ messages: { ...s.messages, [char.id]: msgs } }));
+        set(s => ({ messages: { ...s.messages, [char.id]: msgs }, chatReady: true }));
       } else {
         set(s => ({
           messages: {
             ...s.messages,
             [char.id]: [{ id: 'greeting', role: 'assistant', content: char.greeting || `Hello! I'm ${char.name}.`, timestamp: Date.now() }],
           },
+          chatReady: true,
         }));
       }
     } catch {
@@ -111,13 +117,14 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
           ...s.messages,
           [char.id]: [{ id: 'greeting', role: 'assistant', content: char.greeting || `Hello! I'm ${char.name}.`, timestamp: Date.now() }],
         },
+        chatReady: true,
       }));
     }
   },
 
   sendMessage: async (content, energy, onEnergyUpdate) => {
-    const { selectedCharacter } = get();
-    if (!content.trim() || !selectedCharacter || energy <= 0) return;
+    const { selectedCharacter, chatReady } = get();
+    if (!content.trim() || !selectedCharacter || energy <= 0 || !chatReady) return;
 
     const charId = selectedCharacter.id;
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content, timestamp: Date.now() };
@@ -143,8 +150,8 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   },
 
   sendMessageSSE: async (content, energy, onEnergyUpdate) => {
-    const { selectedCharacter, appendToken, finalizeStreamingMessage } = get();
-    if (!content.trim() || !selectedCharacter || energy <= 0) return;
+    const { selectedCharacter, appendToken, finalizeStreamingMessage, chatReady } = get();
+    if (!content.trim() || !selectedCharacter || energy <= 0 || !chatReady) return;
 
     const charId = selectedCharacter.id;
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content, timestamp: Date.now() };
