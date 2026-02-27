@@ -36,24 +36,26 @@ export async function POST(
       [userId, creatureId, content]
     );
 
-    // Call Alan Bot Service for AI reply (non-streaming)
+    // Call Alan Bot Service for AI reply (Anthropic API format)
     let replyContent = "I'm here to chat! (AI service is currently unavailable)";
     try {
       const alanRes = await fetch(`${ALAN_URL}/v1/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trigger: 'user_message',
-          content,
-          timestamp: new Date().toISOString(),
-          metadata: { characterId: creatureId, userId },
+          model: 'alan',
+          max_tokens: 1024,
+          messages: [{ role: 'user', content }],
           stream: false,
+          metadata: { characterId: creatureId, userId },
         }),
       });
 
       if (alanRes.ok) {
         const alanData = await alanRes.json();
-        replyContent = alanData.content || alanData.reply || alanData.message || replyContent;
+        // Anthropic format: { content: [{ type: 'text', text: '...' }] }
+        const textBlock = alanData.content?.find?.((b: any) => b.type === 'text');
+        replyContent = textBlock?.text || alanData.reply || alanData.message || replyContent;
       }
     } catch {
       // Alan unavailable — use fallback reply

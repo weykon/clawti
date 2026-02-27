@@ -205,7 +205,10 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
 
           try {
             const parsed = JSON.parse(data);
-            if (parsed.t) appendToken(charId, parsed.t);
+            // Anthropic format: content_block_delta has delta.text
+            if (parsed.delta?.text) appendToken(charId, parsed.delta.text);
+            // Simple format fallback: { t: "token" }
+            else if (parsed.t) appendToken(charId, parsed.t);
             if (parsed.energyRemaining != null) onEnergyUpdate(parsed.energyRemaining);
           } catch {
             // Non-JSON data line, skip

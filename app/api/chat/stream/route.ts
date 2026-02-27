@@ -37,17 +37,14 @@ export async function POST(req: NextRequest) {
       [userId, characterId, message]
     );
 
-    // Build CoordinatorEvent for Alan
-    const coordinatorEvent = {
-      trigger: 'user_message',
-      content: message,
-      timestamp: new Date().toISOString(),
-      metadata: {
-        characterId,
-        userId,
-        conversationHistory,
-      },
-    };
+    // Build Anthropic-format request for Alan
+    const messages: Array<{ role: string; content: string }> = [];
+    if (Array.isArray(conversationHistory)) {
+      for (const m of conversationHistory) {
+        if (m.role && m.content) messages.push({ role: m.role, content: m.content });
+      }
+    }
+    messages.push({ role: 'user', content: message });
 
     // Proxy to Alan bot service with streaming
     const alanRes = await fetch(`${ALAN_URL}/v1/messages`, {
@@ -57,8 +54,11 @@ export async function POST(req: NextRequest) {
         'Accept': 'text/event-stream',
       },
       body: JSON.stringify({
-        ...coordinatorEvent,
+        model: 'alan',
+        max_tokens: 1024,
+        messages,
         stream: true,
+        metadata: { characterId, userId },
       }),
     });
 
@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Tee the stream: pipe to client + collect full response for persistence
+    // Alan uses Anthropic SSE format: event: content_block_delta, data: { delta: { text } }
     let fullResponse = '';
     const transformStream = new TransformStream({
       transform(chunk, controller) {
@@ -87,7 +88,10 @@ export async function POST(req: NextRequest) {
           if (data === '[DONE]') continue;
           try {
             const parsed = JSON.parse(data);
-            if (parsed.t) fullResponse += parsed.t;
+            // Anthropic format: content_block_delta has delta.text
+            if (parsed.delta?.text) fullResponse += parsed.delta.text;
+            // Also handle simple { t: "token" } format as fallback
+            else if (parsed.t) fullResponse += parsed.t;
           } catch {
             // skip non-JSON
           }
