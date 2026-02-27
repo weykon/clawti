@@ -1,4 +1,4 @@
-# Clawti Frontend — Colleague Onboarding Prompt
+# Clawti — Colleague Onboarding Prompt
 
 Give this prompt to Claude Code after installing it. It will handle the full setup for you.
 
@@ -35,9 +35,9 @@ Copy and paste the following into Claude Code:
 ---
 
 ```
-I'm joining the clawti-frontend project as a new contributor. Please help me:
+I'm joining the clawti project as a new contributor. Please help me:
 
-1. Fork https://github.com/weykon/clawti-frontend to my GitHub account using gh cli, then clone my fork locally into ~/projects/clawti-frontend (create the directory if needed)
+1. Fork https://github.com/weykon/clawti to my GitHub account using gh cli, then clone my fork locally into ~/projects/clawti (create the directory if needed)
 
 2. Install dependencies with npm install
 
@@ -58,7 +58,7 @@ I'm joining the clawti-frontend project as a new contributor. Please help me:
    - deploy.sh      → deployment script for the usa-ny server
    - db/schema.sql  → Postgres schema
 
-5. Set up an upstream remote pointing to weykon/clawti-frontend so I can pull updates
+5. Set up an upstream remote pointing to weykon/clawti so I can pull updates
 
 6. Run npm run dev and confirm it starts on localhost:3000
 
@@ -82,7 +82,7 @@ git checkout -b feature/your-feature-name
 # Make changes, then push to YOUR fork
 git push origin feature/your-feature-name
 
-# Open a PR on GitHub against weykon/clawti-frontend:main
+# Open a PR on GitHub against weykon/clawti:main
 gh pr create --base main --head your-github-username:feature/your-feature-name
 ```
 
@@ -95,7 +95,7 @@ After your PR is merged, the team lead will run:
 
 Or to deploy your branch directly for review:
 ```bash
-ssh usa-ny "cd /root/p/clawti-frontend && git fetch && git checkout your-branch && ./deploy.sh --frontend"
+ssh usa-ny "cd /root/p/clawti && git fetch && git checkout your-branch && ./deploy.sh --frontend"
 ```
 
 Live preview: https://clawti.clawhivemarket.com
