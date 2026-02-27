@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Outfit:wght@400;600;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-accent: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-ramos-black: #000000;
+  --color-ramos-white: #FDFCFB;
+  --color-ramos-accent: #FF5C00;
+  --color-ramos-gray: #F5F5F5;
+  --color-ramos-muted: #666666;
+  --color-ramos-surface: #FDFCFB;
+  --color-ramos-border: #E5E5E5;
+}
+
+@layer base {
+  body {
+    @apply bg-ramos-white text-ramos-black font-sans antialiased selection:bg-ramos-accent selection:text-white overflow-x-hidden;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/80 backdrop-blur-2xl border border-ramos-border;
+  }
+
+  .bento-card {
+    @apply bg-ramos-white rounded-[32px] p-6 border border-ramos-border transition-all duration-500 hover:border-ramos-accent/40 hover:bg-ramos-gray hover:shadow-[0_20px_40px_-15px_rgba(255,92,0,0.1)];
+  }
+
+  .btn-primary {
+    @apply bg-ramos-accent text-white font-accent font-bold px-8 py-4 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-[0_10px_30px_rgba(255,92,0,0.3)];
+  }
+
+  .nav-item-active {
+    @apply text-ramos-accent;
+  }
+
+  .nav-label {
+    @apply font-accent text-[10px] tracking-[0.2em] uppercase font-extrabold;
+  }
+}
+
+/* Background */
+.mesh-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background: #FDFCFB;
+  overflow: hidden;
+}
+
+/* Typography Enhancements */
+.text-display {
+  @apply font-display font-bold tracking-tighter leading-[0.85];
+}
+
+.text-accent {
+  @apply font-accent font-bold uppercase tracking-[0.15em];
+}
+
+.text-dense {
+  @apply leading-[1.1] tracking-tight;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-black/5 rounded-full hover:bg-ramos-accent/30 transition-colors;
+}
+
+/* Markdown Styles */
+.markdown-body {
+  @apply leading-relaxed;
+}
+.markdown-body p {
+  @apply mb-4 last:mb-0;
+}

@@ -1,0 +1,591 @@
+openapi: 3.0.3
+info:
+  title: Clawti (VibeCreature) API
+  description: >
+    API contract for the Clawti AI agent companion app.
+    Derived from the frontend ApiClient class in `src/api.ts`.
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:3001/api
+    description: Local development (proxied via Vite at /api)
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token stored in localStorage under key 'vc_token'
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+      required: [id, username, email]
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          description: JWT access token
+      required: [user, token]
+
+    Creature:
+      type: object
+      description: >
+        Backend creature object. The frontend maps this to a Character
+        interface via creatureToCharacter().
+      properties:
+        agentId:
+          type: string
+          description: Primary ID (also seen as agent_id or id)
+        name:
+          type: string
+        bio:
+          type: string
+          description: Short tagline / bio
+        worldDescription:
+          type: string
+          description: Extended description / world context
+        photos:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Array of image URLs; first element used as avatar
+        personality:
+          type: string
+        greeting:
+          type: string
+          description: Initial greeting message (also seen as firstMes)
+        gender:
+          type: string
+        age:
+          type: integer
+        occupation:
+          type: string
+        rating:
+          type: number
+          default: 0
+        creatorId:
+          type: string
+          format: uuid
+          description: >
+            UUID of the creator. All-zeros UUID indicates a system/default creature.
+      required: [agentId, name]
+
+    CreatureCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        personalityDetails:
+          type: object
+          description: Personality attributes for the creature
+        messageExamples:
+          type: array
+          items:
+            type: object
+          description: Example conversation messages
+      required: [name]
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        timestamp:
+          type: integer
+          description: Unix timestamp in milliseconds
+      required: [id, role, content, timestamp]
+
+    FeedItem:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        likes:
+          type: integer
+        comments:
+          type: integer
+      required: [id]
+
+    EnergyInfo:
+      type: object
+      properties:
+        energy:
+          type: integer
+          description: Current energy balance
+        lastCheckin:
+          type: string
+          format: date-time
+
+    ProfileData:
+      type: object
+      description: User profile data (shape to be finalized with backend)
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+              required: [username, email, password]
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+              required: [email, password]
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Validate token and get current user
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Token invalid or expired
+
+  /user/profile:
+    get:
+      tags: [User]
+      summary: Get user profile
+      responses:
+        '200':
+          description: Profile data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileData'
+    put:
+      tags: [User]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileData'
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileData'
+
+  /user/energy:
+    get:
+      tags: [User]
+      summary: Get energy balance
+      responses:
+        '200':
+          description: Energy info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnergyInfo'
+
+  /user/energy/daily-checkin:
+    post:
+      tags: [User]
+      summary: Perform daily check-in for energy reward
+      responses:
+        '200':
+          description: Check-in successful, energy updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnergyInfo'
+        '409':
+          description: Already checked in today
+
+  /user/friends:
+    get:
+      tags: [Friends]
+      summary: List user's friends (saved creatures)
+      responses:
+        '200':
+          description: Friends list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  friends:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        creature:
+                          $ref: '#/components/schemas/Creature'
+    post:
+      tags: [Friends]
+      summary: Add a creature as friend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                creature_id:
+                  type: string
+              required: [creature_id]
+      responses:
+        '200':
+          description: Friend added
+        '409':
+          description: Already a friend
+
+  /user/friends/{id}:
+    delete:
+      tags: [Friends]
+      summary: Remove a friend
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Creature ID to unfriend
+      responses:
+        '200':
+          description: Friend removed
+        '404':
+          description: Friend not found
+
+  /creatures/discover:
+    get:
+      tags: [Creatures]
+      summary: Discover available creatures
+      security: []
+      parameters:
+        - name: gender
+          in: query
+          schema:
+            type: string
+        - name: occupation
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: List of creatures
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  creatures:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Creature'
+
+  /creatures/{id}:
+    get:
+      tags: [Creatures]
+      summary: Get a specific creature by ID
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Creature details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Creature'
+        '404':
+          description: Creature not found
+    delete:
+      tags: [Creatures]
+      summary: Delete a creature
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Creature deleted
+        '403':
+          description: Not the creator
+        '404':
+          description: Creature not found
+
+  /creatures:
+    post:
+      tags: [Creatures]
+      summary: Create a new creature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatureCreateRequest'
+      responses:
+        '201':
+          description: Creature created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Creature'
+        '400':
+          description: Validation error
+
+  /chat/{creatureId}/messages:
+    get:
+      tags: [Chat]
+      summary: Get chat message history
+      parameters:
+        - name: creatureId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Message history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+
+  /chat/{creatureId}/send:
+    post:
+      tags: [Chat]
+      summary: Send a message and get AI reply
+      parameters:
+        - name: creatureId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required: [content]
+      responses:
+        '200':
+          description: AI reply message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  /chat/{creatureId}:
+    delete:
+      tags: [Chat]
+      summary: Clear chat history with a creature
+      parameters:
+        - name: creatureId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chat history cleared
+
+  /feed:
+    get:
+      tags: [Feed]
+      summary: Get feed items
+      security: []
+      parameters:
+        - name: tab
+          in: query
+          schema:
+            type: string
+            default: recommended
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Feed items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeedItem'
+
+  /feed/{id}:
+    get:
+      tags: [Feed]
+      summary: Get a specific feed item
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Feed item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedItem'
+
+  /feed/{id}/like:
+    post:
+      tags: [Feed]
+      summary: Like a feed item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Like recorded
+
+  /feed/{id}/comment:
+    post:
+      tags: [Feed]
+      summary: Comment on a feed item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required: [content]
+      responses:
+        '200':
+          description: Comment created
