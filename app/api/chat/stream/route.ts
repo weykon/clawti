@@ -31,6 +31,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'characterId is required' }, { status: 400 });
     }
 
+    if (message.length > 5000) {
+      return NextResponse.json({ error: 'Message too long (max 5000 chars)' }, { status: 400 });
+    }
+
+    // Load character first — verify it exists before spending energy
+    const creature = await loadCreatureForPrompt(characterId);
+    if (!creature) {
+      return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+    }
+    const characterSystem = buildCharacterSystem(creature);
+
     // Atomic energy deduction — prevents race conditions
     const remaining = await deductEnergy(userId);
     if (remaining === null) {
@@ -43,10 +54,6 @@ export async function POST(req: NextRequest) {
        VALUES ($1, $2, 'user', $3)`,
       [userId, characterId, message]
     );
-
-    // Load character + build system prompt (shared utility)
-    const creature = await loadCreatureForPrompt(characterId);
-    const characterSystem = creature ? buildCharacterSystem(creature) : '';
 
     // Server-authoritative history (already includes the user message we just inserted)
     const messages = await getRecentHistory(userId, characterId);
@@ -83,15 +90,13 @@ export async function POST(req: NextRequest) {
     clearTimeout(timer);
 
     if (!alanRes.ok) {
-      const errText = await alanRes.text().catch(() => 'Alan service error');
-      return NextResponse.json(
-        { error: `Alan service returned ${alanRes.status}: ${errText}` },
-        { status: 502 }
-      );
+      const errText = await alanRes.text().catch(() => '');
+      console.error(`Alan service returned ${alanRes.status}: ${errText}`);
+      return NextResponse.json({ error: 'AI service unavailable' }, { status: 502 });
     }
 
     if (!alanRes.body) {
-      return NextResponse.json({ error: 'No stream body from Alan' }, { status: 502 });
+      return NextResponse.json({ error: 'AI service unavailable' }, { status: 502 });
     }
 
     // Tee the stream: pipe to client + collect full response for persistence
@@ -153,9 +158,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('Chat stream error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
     const gender = url.searchParams.get('gender');
     const occupation = url.searchParams.get('occupation');
     const parsedLimit = parseInt(url.searchParams.get('limit') || '50', 10);
-    const limit = Math.min(Number.isNaN(parsedLimit) ? 50 : parsedLimit, 100);
+    const limit = Math.max(1, Math.min(Number.isNaN(parsedLimit) ? 50 : parsedLimit, 100));
 
     const conditions = ['c.is_public = true'];
     const params: any[] = [];

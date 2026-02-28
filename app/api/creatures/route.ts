@@ -8,8 +8,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, card, metadata, mode } = body;
 
-    if (!name) {
+    if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    if (name.length > 100) {
+      return NextResponse.json({ error: 'Name too long (max 100 chars)' }, { status: 400 });
     }
 
     // Atomic energy deduction — prevents race conditions from concurrent creation requests

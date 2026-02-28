@@ -25,6 +25,17 @@ export async function POST(
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
+    if (content.length > 5000) {
+      return NextResponse.json({ error: 'Message too long (max 5000 chars)' }, { status: 400 });
+    }
+
+    // Load character first — verify it exists before spending energy
+    const creature = await loadCreatureForPrompt(creatureId);
+    if (!creature) {
+      return NextResponse.json({ error: 'Character not found' }, { status: 404 });
+    }
+    const characterSystem = buildCharacterSystem(creature);
+
     // Atomic energy deduction
     const remaining = await deductEnergy(userId);
     if (remaining === null) {
@@ -39,15 +50,11 @@ export async function POST(
       [userId, creatureId, content]
     );
 
-    // Load character + build system prompt (shared utility)
-    const creature = await loadCreatureForPrompt(creatureId);
-    const characterSystem = creature ? buildCharacterSystem(creature) : '';
-
     // Server-authoritative history (includes the user message we just inserted)
     const alanMessages = await getRecentHistory(userId, creatureId);
 
     // Call Alan with timeout
-    let replyContent = "I'm here to chat! (AI service is currently unavailable)";
+    let replyContent = '...';
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), ALAN_TIMEOUT);
 
