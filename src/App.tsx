@@ -56,7 +56,7 @@ export default function App() {
     api.creatures.discover({ limit: 50 }).then(res => {
       const discovered = Array.isArray(res) ? res : (res?.creatures || []);
       if (discovered.length > 0) setCharacters(discovered.map(creatureToCharacter));
-    }).catch(() => {});
+    }).catch(err => console.warn('Failed to load discover:', err));
   };
 
   const loadUserData = async () => {

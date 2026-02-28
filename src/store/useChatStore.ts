@@ -232,7 +232,9 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
 
       finalizeStreamingMessage(charId);
     } catch (error) {
-      set({ chatError: error instanceof Error ? error.message : 'Stream failed', isStreaming: false });
+      // Finalize any partially-streamed message so it doesn't stay stuck in streaming state
+      finalizeStreamingMessage(charId);
+      set({ chatError: error instanceof Error ? error.message : 'Stream failed' });
       setTimeout(() => set({ chatError: null }), 5000);
     } finally {
       set({ isTyping: false, isStreaming: false });
