@@ -18,15 +18,16 @@ export function ChatView() {
   const { setFriendsListOpen, setCharProfileOpen, setActiveView } = useUIStore();
   const { setSelectedCharacter } = useChatStore();
   const {
-    messages, selectedCharacter, inputText, isTyping, chatError, energy,
+    messages, selectedCharacter, inputText, isTyping, chatError, chatReady, energy,
     setInputText, send, startChat,
   } = useChat();
   const { characters, friends } = useCreatureStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const msgCount = messages.length;
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, selectedCharacter?.id, isTyping]);
+  }, [msgCount, selectedCharacter?.id]);
 
   // Build active chats from characters that have messages
   const allChars = [...characters, ...friends];
@@ -127,6 +128,7 @@ export function ChatView() {
             messages={messages[selectedCharacter.id] || []}
             inputText={inputText}
             isTyping={isTyping}
+            chatReady={chatReady}
             chatError={chatError}
             energy={energy}
             messagesEndRef={messagesEndRef}
@@ -150,7 +152,7 @@ export function ChatView() {
 }
 
 function ChatConversation({
-  t, selectedCharacter, messages, inputText, isTyping, chatError, energy,
+  t, selectedCharacter, messages, inputText, isTyping, chatReady, chatError, energy,
   messagesEndRef, onBack, onProfileOpen, onInputChange, onSend,
 }: {
   t: Translations;
@@ -158,6 +160,7 @@ function ChatConversation({
   messages: import('../../types').Message[];
   inputText: string;
   isTyping: boolean;
+  chatReady: boolean;
   chatError: string | null;
   energy: number;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
@@ -196,6 +199,15 @@ function ChatConversation({
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-8 space-y-10 scroll-smooth pb-40 relative z-10">
+        {!chatReady && messages.length === 0 && (
+          <div className="flex items-center gap-4 text-white/40 text-sm animate-pulse py-8">
+            <div className="w-8 h-8 rounded-full bg-white/10" />
+            <div className="space-y-2 flex-1">
+              <div className="h-3 bg-white/10 rounded-full w-2/3" />
+              <div className="h-3 bg-white/10 rounded-full w-1/3" />
+            </div>
+          </div>
+        )}
         {messages.map((msg) => (
           <motion.div
             key={msg.id}
