@@ -552,7 +552,7 @@ function ImportFlow({ t, language, createForm, createStep, importType, importUrl
               </div>
               {importPreview?.firstMes && (
                 <div className="p-4 bg-ramos-gray/50 rounded-2xl">
-                  <p className="text-[10px] text-ramos-muted uppercase tracking-widest font-bold mb-2">{t.greeting || 'Greeting'}</p>
+                  <p className="text-[10px] text-ramos-muted uppercase tracking-widest font-bold mb-2">{t.greeting}</p>
                   <p className="text-sm text-ramos-muted italic">{importPreview.firstMes.slice(0, 200)}{importPreview.firstMes.length > 200 ? '...' : ''}</p>
                 </div>
               )}
@@ -588,7 +588,7 @@ function ImportFlow({ t, language, createForm, createStep, importType, importUrl
               <Sparkles className="w-6 h-6" />
               {t.generatePhotos}
             </button>
-            <span className="absolute top-1/2 right-6 -translate-y-1/2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[9px] font-bold text-white uppercase tracking-widest">Coming Soon</span>
+            <span className="absolute top-1/2 right-6 -translate-y-1/2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[9px] font-bold text-white uppercase tracking-widest">{t.comingSoon}</span>
           </div>
         </motion.div>
       )}

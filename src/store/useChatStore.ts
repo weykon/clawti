@@ -62,7 +62,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       }
       // Create new streaming message
       const streamingMsg: Message = {
-        id: `stream-${Date.now()}`,
+        id: `stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         role: 'assistant',
         content: token,
         timestamp: Date.now(),
@@ -118,7 +118,8 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
           switchingCharId: null,
         }));
       }
-    } catch {
+    } catch (err) {
+      console.warn(`Failed to load chat history for ${char.name}:`, err);
       if (get().switchingCharId !== char.id) return;
       set(s => ({
         messages: {

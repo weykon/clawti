@@ -126,14 +126,17 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
         const buf = await file.arrayBuffer();
         const bytes = new Uint8Array(buf);
         let offset = 8;
-        while (offset < bytes.length) {
+        // PNG chunk format: 4-byte length + 4-byte type + data + 4-byte CRC
+        while (offset + 12 <= bytes.length) {
           const len = (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
+          // Guard against malformed chunks (negative/huge length)
+          if (len < 0 || len > bytes.length - offset - 12) break;
           const type = String.fromCharCode(bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]);
           if (type === 'tEXt' || type === 'iTXt') {
             const chunkData = bytes.slice(offset + 8, offset + 8 + len);
             const str = new TextDecoder('latin1').decode(chunkData);
             const nullIdx = str.indexOf('\0');
-            if (str.substring(0, nullIdx) === 'chara') {
+            if (nullIdx > 0 && str.substring(0, nullIdx) === 'chara') {
               cardData = JSON.parse(atob(str.substring(nullIdx + 1)));
               break;
             }

@@ -50,6 +50,7 @@ export interface BackendCreature {
   gender?: string;
   age?: number;
   occupation?: string;
+  race?: string;
   rating?: number;
   chatCount?: number;
   creatorId?: string;

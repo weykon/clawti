@@ -10,11 +10,13 @@ export function creatureToCharacter(c: BackendCreature): Character {
     images: c.photos || [],
     personality: c.personality || '',
     greeting: c.greeting || c.firstMes || '',
-    gender: c.gender,
-    age: c.age,
-    occupation: c.occupation,
+    gender: c.gender || '',
+    age: c.age ?? undefined,
+    occupation: c.occupation || '',
+    race: c.race || '',
+    world: c.worldDescription || '',
     rating: c.rating || 0,
     chatCount: c.chatCount || 0,
-    isCustom: c.creatorId !== '00000000-0000-0000-0000-000000000000',
+    isCustom: !!c.creatorId && c.creatorId !== '00000000-0000-0000-0000-000000000000',
   };
 }

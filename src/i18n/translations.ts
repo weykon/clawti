@@ -169,6 +169,7 @@ export const translations = {
     selfIntro: 'Self Introduction',
     worldIntro: 'World & Scenario',
     generating: 'Generating...',
+    comingSoon: 'Coming Soon',
     byContinuing: 'By continuing, you agree to our',
   },
   zh: {
@@ -341,6 +342,7 @@ export const translations = {
     selfIntro: '自我介绍',
     worldIntro: '世界与场景',
     generating: '生成中...',
+    comingSoon: '即将推出',
     byContinuing: '继续即表示您同意我们的',
   },
 } as const;
