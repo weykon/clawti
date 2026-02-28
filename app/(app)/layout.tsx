@@ -17,6 +17,7 @@ import { FriendsListModal } from '@/src/components/modals/FriendsListModal';
 import { RechargeModal } from '@/src/components/modals/RechargeModal';
 import { SettingsModal } from '@/src/components/modals/SettingsModal';
 import { ErrorBoundary } from '@/src/components/ErrorBoundary';
+import { ToastContainer } from '@/src/components/Toast';
 
 import type { View } from '@/src/types';
 
@@ -134,6 +135,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <FriendsListModal />
       <RechargeModal />
       <SettingsModal />
+      <ToastContainer />
     </div>
   );
 }

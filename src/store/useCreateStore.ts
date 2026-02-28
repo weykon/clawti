@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import type { Character, CreateFormState, ImportPreview } from '../types';
 import { api } from '../api/client';
+import { useUIStore } from './useUIStore';
 import { PERSONALITY_TEMPLATES } from '../data/personalityTemplates';
 
 const DEFAULT_FORM: CreateFormState = {
@@ -240,7 +241,13 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
 
       set({ createForm: { ...DEFAULT_FORM }, createStep: 1, importFile: null, importPreview: null, importUrl: '' });
     } catch (error) {
-      setCreateErrorWithAutoClear(set, error instanceof Error ? error.message : 'Failed to create creature');
+      const msg = error instanceof Error ? error.message : 'Failed to create creature';
+      // Energy errors → prominent toast; other errors → inline banner
+      if (msg.toLowerCase().includes('energy')) {
+        useUIStore.getState().showToast(msg, 'error');
+      } else {
+        setCreateErrorWithAutoClear(set, msg);
+      }
     } finally {
       set({ isGenerating: false });
     }

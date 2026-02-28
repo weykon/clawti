@@ -5,6 +5,14 @@ import type { View } from '../types';
 
 type Language = 'en' | 'zh';
 
+export type ToastType = 'error' | 'success' | 'info';
+
+interface Toast {
+  id: string;
+  message: string;
+  type: ToastType;
+}
+
 interface UIState {
   language: Language;
   activeView: View;
@@ -19,6 +27,7 @@ interface UIState {
   selectedPlan: { label?: string; energy?: string; price: string } | null;
   rechargeTab: 'subscribe' | 'recharge' | 'earn';
   rechargeNotice: string | null;
+  toasts: Toast[];
 }
 
 interface UIActions {
@@ -36,6 +45,8 @@ interface UIActions {
   setSelectedPlan: (plan: UIState['selectedPlan']) => void;
   setRechargeTab: (tab: UIState['rechargeTab']) => void;
   showRechargeNotice: (msg: string) => void;
+  showToast: (message: string, type?: ToastType) => void;
+  dismissToast: (id: string) => void;
   closeAllModals: () => void;
 }
 
@@ -58,6 +69,7 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
   selectedPlan: null,
   rechargeTab: 'recharge',
   rechargeNotice: null,
+  toasts: [],
 
   setLanguage: (lang) => set({ language: lang }),
   toggleLanguage: () => set(s => ({ language: s.language === 'en' ? 'zh' : 'en' })),
@@ -77,6 +89,12 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
     set({ rechargeNotice: msg });
     rechargeNoticeTimer = setTimeout(() => set({ rechargeNotice: null }), 4000);
   },
+  showToast: (message, type = 'error') => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    set(s => ({ toasts: [...s.toasts, { id, message, type }] }));
+    setTimeout(() => set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), 4000);
+  },
+  dismissToast: (id) => set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })),
   closeAllModals: () => set({
     isFilterOpen: false,
     isFriendsListOpen: false,
