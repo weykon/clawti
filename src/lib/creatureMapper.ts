@@ -14,6 +14,7 @@ export function creatureToCharacter(c: BackendCreature): Character {
     age: c.age,
     occupation: c.occupation,
     rating: c.rating || 0,
+    chatCount: c.chatCount || 0,
     isCustom: c.creatorId !== '00000000-0000-0000-0000-000000000000',
   };
 }

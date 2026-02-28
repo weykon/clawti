@@ -169,8 +169,8 @@ function ChatConversation({
   return (
     <div className="h-full flex flex-col relative z-10">
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <img src={selectedCharacter.avatar} alt="" className="w-full h-full object-cover blur-sm opacity-30" referrerPolicy="no-referrer" />
-        <div className="absolute inset-0 bg-black/50" />
+        <img src={selectedCharacter.avatar} alt="" className="w-full h-full object-cover opacity-50" referrerPolicy="no-referrer" />
+        <div className="absolute inset-0 bg-black/60" />
       </div>
 
       {/* Chat Header */}

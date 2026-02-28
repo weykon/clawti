@@ -8,20 +8,22 @@ export async function GET(req: NextRequest) {
     const occupation = url.searchParams.get('occupation');
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 100);
 
-    const conditions = ['is_public = true'];
+    const conditions = ['c.is_public = true'];
     const params: any[] = [];
 
     if (gender) {
       params.push(gender);
-      conditions.push(`gender = $${params.length}`);
+      conditions.push(`c.gender = $${params.length}`);
     }
     if (occupation) {
       params.push(occupation);
-      conditions.push(`occupation = $${params.length}`);
+      conditions.push(`c.occupation = $${params.length}`);
     }
 
     params.push(limit);
-    const sql = `SELECT * FROM creatures WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT $${params.length}`;
+    const sql = `SELECT c.*,
+      (SELECT COUNT(DISTINCT cm.user_id) FROM chat_messages cm WHERE cm.creature_id = c.id) as chat_count
+      FROM creatures c WHERE ${conditions.join(' AND ')} ORDER BY c.created_at DESC LIMIT $${params.length}`;
 
     const rows = await query(sql, params);
 
@@ -40,6 +42,7 @@ export async function GET(req: NextRequest) {
       photos: r.photos || [],
       rating: parseFloat(r.rating) || 0,
       creatorId: r.creator_id,
+      chatCount: parseInt(r.chat_count) || 0,
     }));
 
     return NextResponse.json({ creatures });

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { characterId, message, conversationHistory } = body;
+    const { characterId, message } = body;
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -37,14 +37,36 @@ export async function POST(req: NextRequest) {
       [userId, characterId, message]
     );
 
-    // Build Anthropic-format request for Alan
-    const messages: Array<{ role: string; content: string }> = [];
-    if (Array.isArray(conversationHistory)) {
-      for (const m of conversationHistory) {
-        if (m.role && m.content) messages.push({ role: m.role, content: m.content });
+    // Load character personality for per-character system prompt
+    let characterSystem = '';
+    if (characterId) {
+      const creature = await queryOne<{
+        name: string; personality: string; bio: string;
+        greeting: string; occupation: string; world_description: string;
+      }>(
+        'SELECT name, personality, bio, greeting, occupation, world_description FROM creatures WHERE id = $1',
+        [characterId]
+      );
+      if (creature) {
+        const parts = [`你是${creature.name}。`];
+        if (creature.personality) parts.push(`性格特点：${creature.personality}。`);
+        if (creature.bio) parts.push(`关于你：${creature.bio}`);
+        if (creature.occupation) parts.push(`职业：${creature.occupation}。`);
+        if (creature.world_description) parts.push(`世界背景：${creature.world_description}`);
+        parts.push('请始终以这个角色身份回应，保持角色的语气和性格特点。用中文回复。');
+        characterSystem = parts.join('\n');
       }
     }
-    messages.push({ role: 'user', content: message });
+
+    // Build messages from DB history (server-authoritative, prevents cross-character contamination)
+    // The current user message was already persisted above, so it's included in the query results
+    const historyRows = await query<{ role: string; content: string }>(
+      `SELECT role, content FROM chat_messages
+       WHERE user_id = $1 AND creature_id = $2
+       ORDER BY created_at DESC LIMIT 20`,
+      [userId, characterId]
+    );
+    const messages: Array<{ role: string; content: string }> = historyRows.reverse();
 
     // Proxy to Alan bot service with streaming
     const alanRes = await fetch(`${ALAN_URL}/v1/messages`, {
@@ -58,6 +80,7 @@ export async function POST(req: NextRequest) {
         max_tokens: 1024,
         messages,
         stream: true,
+        ...(characterSystem ? { system: characterSystem } : {}),
         metadata: { characterId, userId },
       }),
     });

@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { motion } from 'motion/react';
 import {
   Sparkles, ArrowLeft, ChevronRight, Shield, Zap,
-  PlusCircle, RefreshCw, FileUp, Languages,
+  PlusCircle, RefreshCw, FileUp, Languages, Loader2,
 } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { useUIStore } from '../../store/useUIStore';
@@ -22,17 +22,18 @@ export function CreateView() {
   const language = useUIStore(s => s.language);
   const { setActiveView, setEnergy } = useUIStore();
   const {
-    createFlow, createStep, createForm, isGenerating, isPremium,
+    createFlow, createStep, createForm, isGenerating, generatingField, isPremium,
     showAgeVerification, importType, importUrl, importFile, importPreview,
     setCreateFlow, setCreateStep, setCreateForm, setShowAgeVerification,
     setImportType, setImportUrl, handleImportFile, handleGenerateCharacter,
+    generateFieldText,
   } = useCreateStore();
   const { addCharacter } = useCreatureStore();
   const { startChat } = useChatStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const generateField = (_field: string) => {
-    // Stub — backend AI generation
+  const generateField = (field: string) => {
+    generateFieldText(field);
   };
 
   const onGenerate = () => {
@@ -96,8 +97,8 @@ export function CreateView() {
 
       {/* Flow Content */}
       <div className="min-h-[400px]">
-        {createFlow === 'simple' && <SimpleFlow t={t} language={language} createForm={createForm} isPremium={isPremium} setCreateForm={setCreateForm} generateField={generateField} />}
-        {createFlow === 'detailed' && <DetailedFlow t={t} language={language} createForm={createForm} createStep={createStep} isPremium={isPremium} showAgeVerification={showAgeVerification} setCreateForm={setCreateForm} setShowAgeVerification={setShowAgeVerification} generateField={generateField} />}
+        {createFlow === 'simple' && <SimpleFlow t={t} language={language} createForm={createForm} isPremium={isPremium} generatingField={generatingField} setCreateForm={setCreateForm} generateField={generateField} />}
+        {createFlow === 'detailed' && <DetailedFlow t={t} language={language} createForm={createForm} createStep={createStep} isPremium={isPremium} generatingField={generatingField} showAgeVerification={showAgeVerification} setCreateForm={setCreateForm} setShowAgeVerification={setShowAgeVerification} generateField={generateField} />}
         {createFlow === 'import' && <ImportFlow t={t} language={language} createForm={createForm} createStep={createStep} importType={importType} importUrl={importUrl} importFile={importFile} importPreview={importPreview} setCreateForm={setCreateForm} setImportType={setImportType} setImportUrl={setImportUrl} setCreateStep={setCreateStep} handleImportFile={handleImportFile} fileInputRef={fileInputRef} />}
       </div>
 
@@ -135,9 +136,9 @@ export function CreateView() {
 }
 
 /* ─── SIMPLE FLOW ─── */
-function SimpleFlow({ t, language, createForm, isPremium, setCreateForm, generateField }: {
+function SimpleFlow({ t, language, createForm, isPremium, generatingField, setCreateForm, generateField }: {
   t: Translations; language: string; createForm: CreateFormState; isPremium: boolean;
-  setCreateForm: (f: Partial<CreateFormState>) => void; generateField: (f: string) => void;
+  generatingField: string | null; setCreateForm: (f: Partial<CreateFormState>) => void; generateField: (f: string) => void;
 }) {
   return (
     <div className="space-y-12">
@@ -205,7 +206,9 @@ function SimpleFlow({ t, language, createForm, isPremium, setCreateForm, generat
           <div className="space-y-4 pt-4">
             <div className="flex items-center justify-between">
               <label className="text-[10px] text-accent text-ramos-muted uppercase tracking-widest font-bold">{t.styleDescription}</label>
-              <button onClick={() => generateField('appearanceDescription')} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1"><Sparkles className="w-3 h-3" />{t.generate}</button>
+              <button onClick={() => generateField('appearanceDescription')} disabled={generatingField === 'appearanceDescription'} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1 disabled:opacity-50">
+                {generatingField === 'appearanceDescription' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{t.generate}
+              </button>
             </div>
             <textarea value={createForm.appearanceDescription} onChange={(e) => setCreateForm({ appearanceDescription: e.target.value })} placeholder={t.appearancePlaceholder} rows={4} className="w-full bg-ramos-gray border border-ramos-border rounded-[32px] p-6 text-sm focus:outline-none focus:border-ramos-accent/50 transition-all resize-none font-medium" />
           </div>
@@ -244,9 +247,9 @@ function SimpleFlow({ t, language, createForm, isPremium, setCreateForm, generat
 }
 
 /* ─── DETAILED FLOW ─── */
-function DetailedFlow({ t, language, createForm, createStep, isPremium, showAgeVerification, setCreateForm, setShowAgeVerification, generateField }: {
+function DetailedFlow({ t, language, createForm, createStep, isPremium, generatingField, showAgeVerification, setCreateForm, setShowAgeVerification, generateField }: {
   t: Translations; language: string; createForm: CreateFormState; createStep: number; isPremium: boolean;
-  showAgeVerification: boolean; setCreateForm: (f: Partial<CreateFormState>) => void; setShowAgeVerification: (v: boolean) => void; generateField: (f: string) => void;
+  generatingField: string | null; showAgeVerification: boolean; setCreateForm: (f: Partial<CreateFormState>) => void; setShowAgeVerification: (v: boolean) => void; generateField: (f: string) => void;
 }) {
   return (
     <div className="space-y-8">
@@ -276,7 +279,7 @@ function DetailedFlow({ t, language, createForm, createStep, isPremium, showAgeV
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-[10px] text-accent text-ramos-muted uppercase tracking-widest font-bold">{t.bio} ({t.maxChars.replace('{n}', '100')})</label>
-              <button onClick={() => generateField('bio')} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1"><Sparkles className="w-3 h-3" />{t.generate}</button>
+              <button onClick={() => generateField('bio')} disabled={generatingField === 'bio'} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1 disabled:opacity-50">{generatingField === 'bio' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{t.generate}</button>
             </div>
             <textarea maxLength={100} value={createForm.bio} onChange={(e) => setCreateForm({ bio: e.target.value })} className="w-full bg-ramos-gray border border-ramos-border rounded-[24px] p-5 text-sm focus:outline-none focus:border-ramos-accent/50 transition-all resize-none font-medium" rows={3} />
           </div>
@@ -284,14 +287,14 @@ function DetailedFlow({ t, language, createForm, createStep, isPremium, showAgeV
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-[10px] text-accent text-ramos-muted uppercase tracking-widest font-bold">{t.occupation}</label>
-                <button onClick={() => generateField('occupation')} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1"><Sparkles className="w-3 h-3" />{t.generate}</button>
+                <button onClick={() => generateField('occupation')} disabled={generatingField === 'occupation'} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1 disabled:opacity-50">{generatingField === 'occupation' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{t.generate}</button>
               </div>
               <input type="text" value={createForm.occupation} onChange={(e) => setCreateForm({ occupation: e.target.value })} className="w-full bg-ramos-gray border border-ramos-border rounded-[24px] p-5 text-sm focus:outline-none focus:border-ramos-accent/50 transition-all font-medium" />
             </div>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-[10px] text-accent text-ramos-muted uppercase tracking-widest font-bold">{t.worldview}</label>
-                <button onClick={() => generateField('world')} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1"><Sparkles className="w-3 h-3" />{t.generate}</button>
+                <button onClick={() => generateField('world')} disabled={generatingField === 'world'} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1 disabled:opacity-50">{generatingField === 'world' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{t.generate}</button>
               </div>
               <input type="text" value={createForm.world} onChange={(e) => setCreateForm({ world: e.target.value })} className="w-full bg-ramos-gray border border-ramos-border rounded-[24px] p-5 text-sm focus:outline-none focus:border-ramos-accent/50 transition-all font-medium" />
             </div>
@@ -317,7 +320,7 @@ function DetailedFlow({ t, language, createForm, createStep, isPremium, showAgeV
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-[10px] text-accent text-ramos-muted uppercase tracking-widest font-bold">{t.interests} ({t.maxInterests.replace('{n}', '6')})</label>
-              <button onClick={() => generateField('interests')} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1"><Sparkles className="w-3 h-3" />{t.generate}</button>
+              <button onClick={() => generateField('interests')} disabled={generatingField === 'interests'} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1 disabled:opacity-50">{generatingField === 'interests' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{t.generate}</button>
             </div>
             <div className="flex flex-wrap gap-2">
               {[
@@ -417,7 +420,7 @@ function DetailedFlow({ t, language, createForm, createStep, isPremium, showAgeV
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-[10px] text-accent text-ramos-muted uppercase tracking-widest font-bold">{t.appearanceDesc}</label>
-              <button onClick={() => generateField('appearanceDescription')} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1"><Sparkles className="w-3 h-3" />{t.generate}</button>
+              <button onClick={() => generateField('appearanceDescription')} disabled={generatingField === 'appearanceDescription'} className="text-[10px] text-ramos-accent font-bold uppercase tracking-widest flex items-center gap-1 disabled:opacity-50">{generatingField === 'appearanceDescription' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{t.generate}</button>
             </div>
             <textarea value={createForm.appearanceDescription} onChange={(e) => setCreateForm({ appearanceDescription: e.target.value })} className="w-full bg-ramos-gray border border-ramos-border rounded-[24px] p-5 text-sm focus:outline-none focus:border-ramos-accent/50 transition-all resize-none font-medium" rows={3} />
           </div>
@@ -580,10 +583,13 @@ function ImportFlow({ t, language, createForm, createStep, importType, importUrl
               </button>
             ))}
           </div>
-          <button className="w-full py-6 bg-ramos-accent text-white rounded-[32px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] transition-all">
-            <Sparkles className="w-6 h-6" />
-            {t.generatePhotos}
-          </button>
+          <div className="relative">
+            <button disabled className="w-full py-6 bg-ramos-accent/40 text-white rounded-[32px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl cursor-not-allowed">
+              <Sparkles className="w-6 h-6" />
+              {t.generatePhotos}
+            </button>
+            <span className="absolute top-1/2 right-6 -translate-y-1/2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[9px] font-bold text-white uppercase tracking-widest">Coming Soon</span>
+          </div>
         </motion.div>
       )}
 

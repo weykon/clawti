@@ -24,6 +24,7 @@ export interface Character {
   world?: string;
   world_en?: string;
   rating?: number;
+  chatCount?: number;
 }
 
 export interface Message {
@@ -50,6 +51,7 @@ export interface BackendCreature {
   age?: number;
   occupation?: string;
   rating?: number;
+  chatCount?: number;
   creatorId?: string;
 }
 

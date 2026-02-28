@@ -29,13 +29,13 @@ export function CharacterProfileModal() {
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[60] flex items-end justify-center bg-black/80 backdrop-blur-md p-4"
+        className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-md p-4"
         onClick={() => setCharProfileOpen(false)}
       >
         <motion.div
-          initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+          initial={{ y: "100%", opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="w-full max-w-md bg-white rounded-t-[40px] overflow-hidden flex flex-col max-h-[90vh]"
+          className="w-full max-w-md md:max-w-2xl bg-white rounded-t-[40px] md:rounded-[40px] overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh] md:my-auto"
           onClick={e => e.stopPropagation()}
         >
           {/* Image Gallery */}
@@ -91,9 +91,17 @@ export function CharacterProfileModal() {
                 <h3 className="text-5xl text-display mb-2">{currentDiscoverChar.name}</h3>
                 <p className="text-ramos-accent text-sm font-accent tracking-widest uppercase">{language === 'en' ? currentDiscoverChar.tagline_en || currentDiscoverChar.tagline : currentDiscoverChar.tagline}</p>
               </div>
-              <div className="flex items-center gap-1.5 text-ramos-accent bg-ramos-accent/10 px-4 py-2 rounded-2xl">
-                <Sparkles className="w-5 h-5 fill-current" />
-                <span className="text-lg font-bold font-accent">{currentDiscoverChar.rating || '4.8'}</span>
+              <div className="flex flex-col gap-2 items-end">
+                <div className="flex items-center gap-1.5 text-ramos-accent bg-ramos-accent/10 px-4 py-2 rounded-2xl">
+                  <Sparkles className="w-5 h-5 fill-current" />
+                  <span className="text-lg font-bold font-accent">{currentDiscoverChar.rating || '4.8'}</span>
+                </div>
+                {(currentDiscoverChar.chatCount ?? 0) > 0 && (
+                  <div className="flex items-center gap-1.5 text-ramos-muted bg-ramos-gray px-3 py-1.5 rounded-xl">
+                    <MessageSquare className="w-4 h-4" />
+                    <span className="text-xs font-bold font-accent">{currentDiscoverChar.chatCount} {t.chatCount}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -125,6 +133,15 @@ export function CharacterProfileModal() {
               <h4 className="text-[10px] text-accent text-ramos-muted uppercase tracking-widest">{t.personality}</h4>
               <p className="text-base text-ramos-muted leading-relaxed font-medium italic bg-ramos-gray p-6 rounded-[32px]">"{language === 'en' ? currentDiscoverChar.personality_en || currentDiscoverChar.personality : currentDiscoverChar.personality}"</p>
             </div>
+
+            {currentDiscoverChar.world && (
+              <div className="space-y-4">
+                <h4 className="text-[10px] text-accent text-ramos-muted uppercase tracking-widest">{t.worldIntro}</h4>
+                <p className="text-base text-ramos-muted leading-relaxed font-medium bg-ramos-gray p-6 rounded-[32px]">
+                  {language === 'en' ? currentDiscoverChar.world_en || currentDiscoverChar.world : currentDiscoverChar.world}
+                </p>
+              </div>
+            )}
 
             <div className="pt-4">
               <button

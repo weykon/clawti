@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'motion/react';
 import { useRouter } from 'next/navigation';
-import { Compass, Sparkles, Filter, X, Heart } from 'lucide-react';
+import { Compass, Sparkles, Filter, X, Heart, MessageSquare, Eye } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { useUIStore } from '../../store/useUIStore';
 import { useCreatureStore, useFilteredCharacters } from '../../store/useCreatureStore';
@@ -205,6 +205,12 @@ export function DiscoverView() {
                       <Sparkles className="w-3 h-3 text-white fill-current" />
                       <span className="text-[10px] font-bold font-accent text-white">{char.rating || '4.8'}</span>
                     </div>
+                    {(char.chatCount ?? 0) > 0 && (
+                      <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full">
+                        <MessageSquare className="w-3 h-3 text-white" />
+                        <span className="text-[10px] font-bold font-accent text-white">{char.chatCount}</span>
+                      </div>
+                    )}
                     {char.occupation && (
                       <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full">
                         <span className="text-[10px] font-bold font-accent text-white uppercase tracking-wider">
@@ -213,16 +219,33 @@ export function DiscoverView() {
                       </div>
                     )}
                   </div>
-                  <h3 className="text-4xl text-display text-white">{char.name}</h3>
+                  <h3 className="text-4xl text-display text-white">
+                    {char.name}{char.age ? <span className="text-lg text-white/60 font-accent ml-2">{char.age}</span> : null}
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(language === 'en' ? char.personality_en || char.personality : char.personality)
+                      .split(',').slice(0, 3).map((trait, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-white/5 backdrop-blur-md rounded-full text-[9px] font-bold text-white/80 border border-white/5 uppercase tracking-wider">
+                          {trait.trim()}
+                        </span>
+                      ))}
+                  </div>
                   <p className="text-sm text-white/70 line-clamp-2 font-medium">
                     {language === 'en' ? char.description_en || char.description : char.description}
                   </p>
-                  <div className="pt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-500">
+                  <div className="pt-4 opacity-0 group-hover:opacity-100 transition-opacity translate-y-4 group-hover:translate-y-0 duration-500 flex gap-3">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleStartChat(char); }}
-                      className="w-full py-4 bg-white text-black rounded-2xl font-bold text-xs uppercase tracking-widest shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all"
+                      className="flex-1 py-4 bg-white text-black rounded-2xl font-bold text-xs uppercase tracking-widest shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all"
                     >
                       {t.connectNow}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedCharacter(char); setCharProfileOpen(true); }}
+                      className="py-4 px-5 bg-white/20 backdrop-blur-md text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-white/30 active:scale-[0.98] transition-all flex items-center gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      {t.viewDetails}
                     </button>
                   </div>
                 </div>

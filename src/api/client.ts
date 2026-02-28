@@ -141,6 +141,13 @@ class ApiClient {
     clear: (creatureId: string) => this.request<{ success: boolean }>('DELETE', `/chat/${creatureId}`),
   };
 
+  generate = {
+    text: (field: string, context: Record<string, unknown>) =>
+      this.request<{ text: string }>('POST', '/generate/text', { field, context }),
+    image: (characterData: Record<string, unknown>, types: string[] = ['daily']) =>
+      this.request<{ taskId: string }>('POST', '/generate/image', { characterData, types }),
+  };
+
   feed = {
     list: (tab = 'recommended', limit = 20, offset = 0) =>
       this.request<FeedListResponse>('GET', `/feed?tab=${tab}&limit=${limit}&offset=${offset}`),

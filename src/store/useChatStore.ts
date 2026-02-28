@@ -7,6 +7,7 @@ import { api } from '../api/client';
 interface ChatState {
   messages: Record<string, Message[]>;
   selectedCharacter: Character | null;
+  switchingCharId: string | null;
   inputText: string;
   isTyping: boolean;
   isStreaming: boolean;
@@ -32,6 +33,7 @@ interface ChatActions {
 export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   messages: {},
   selectedCharacter: null,
+  switchingCharId: null,
   inputText: '',
   isTyping: false,
   isStreaming: false,
@@ -82,15 +84,19 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
     }),
 
   startChat: async (char) => {
-    set({ selectedCharacter: char, chatReady: false });
+    set({ selectedCharacter: char, chatReady: false, switchingCharId: char.id });
     const { messages } = get();
     if (messages[char.id]) {
-      set({ chatReady: true });
+      set({ chatReady: true, switchingCharId: null });
       return;
     }
 
     try {
       const res = await api.chat.messages(char.id);
+
+      // Discard stale result if user switched to a different character during async load
+      if (get().switchingCharId !== char.id) return;
+
       const msgs = ((res?.messages || res || []) as Array<{
         id: string; role: string; content: string; createdAt?: string;
       }>).map(m => ({
@@ -101,7 +107,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       }));
 
       if (msgs.length > 0) {
-        set(s => ({ messages: { ...s.messages, [char.id]: msgs }, chatReady: true }));
+        set(s => ({ messages: { ...s.messages, [char.id]: msgs }, chatReady: true, switchingCharId: null }));
       } else {
         set(s => ({
           messages: {
@@ -109,15 +115,18 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
             [char.id]: [{ id: 'greeting', role: 'assistant', content: char.greeting || `Hello! I'm ${char.name}.`, timestamp: Date.now() }],
           },
           chatReady: true,
+          switchingCharId: null,
         }));
       }
     } catch {
+      if (get().switchingCharId !== char.id) return;
       set(s => ({
         messages: {
           ...s.messages,
           [char.id]: [{ id: 'greeting', role: 'assistant', content: char.greeting || `Hello! I'm ${char.name}.`, timestamp: Date.now() }],
         },
         chatReady: true,
+        switchingCharId: null,
       }));
     }
   },
@@ -159,10 +168,14 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
     set({ inputText: '', isTyping: true, isStreaming: true });
 
     try {
-      // Use the Next.js SSE proxy to Alan
+      // Server handles history from DB — no client-side history needed
+      const token = api.getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ characterId: charId, message: content }),
       });
 

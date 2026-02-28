@@ -31,6 +31,7 @@ interface CreateState {
   createStep: number;
   createForm: CreateFormState;
   isGenerating: boolean;
+  generatingField: string | null;
   isPremium: boolean;
   showAgeVerification: boolean;
   importType: 'file' | 'url';
@@ -51,6 +52,7 @@ interface CreateActions {
   setImportPreview: (preview: ImportPreview | null) => void;
   resetForm: () => void;
   handleImportFile: (file: File) => Promise<void>;
+  generateFieldText: (field: string) => Promise<void>;
   handleGenerateCharacter: (
     onSuccess: (char: Character) => void,
     onEnergyUpdate: (e: number) => void
@@ -62,6 +64,7 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
   createStep: 1,
   createForm: { ...DEFAULT_FORM },
   isGenerating: false,
+  generatingField: null,
   isPremium: false,
   showAgeVerification: false,
   importType: 'file',
@@ -79,6 +82,35 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
   setImportFile: (file) => set({ importFile: file }),
   setImportPreview: (preview) => set({ importPreview: preview }),
   resetForm: () => set({ createForm: { ...DEFAULT_FORM }, createStep: 1, importFile: null, importPreview: null, importUrl: '' }),
+
+  generateFieldText: async (field) => {
+    const { createForm } = get();
+    set({ generatingField: field });
+    try {
+      const context: Record<string, unknown> = {
+        name: createForm.name,
+        gender: createForm.gender,
+        age: createForm.age,
+        personality: createForm.personality || createForm.personalityTemplate,
+        occupation: createForm.occupation,
+        appearanceStyle: createForm.appearanceStyle,
+      };
+      const result = await api.generate.text(field, context);
+      if (result.text) {
+        if (field === 'interests') {
+          // Parse comma-separated interests
+          const interests = result.text.split(',').map((s: string) => s.trim()).filter(Boolean).slice(0, 6);
+          set(s => ({ createForm: { ...s.createForm, interests } }));
+        } else {
+          set(s => ({ createForm: { ...s.createForm, [field]: result.text } }));
+        }
+      }
+    } catch (err) {
+      console.error(`Failed to generate ${field}:`, err);
+    } finally {
+      set({ generatingField: null });
+    }
+  },
 
   handleImportFile: async (file) => {
     set({ importFile: file });
