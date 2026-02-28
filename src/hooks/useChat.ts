@@ -28,7 +28,6 @@ export function useChat() {
     chatReady,
     setInputText,
     sendMessageSSE,
-    sendMessage,
     startChat,
     clearChat,
   } = useChatStore();
@@ -37,10 +36,6 @@ export function useChat() {
     if (!inputText.trim()) return;
     // Try SSE first, falls back to REST inside sendMessageSSE
     await sendMessageSSE(inputText, energy, setEnergy);
-  };
-
-  const sendREST = async (content: string) => {
-    await sendMessage(content, energy, setEnergy);
   };
 
   return {
@@ -54,7 +49,6 @@ export function useChat() {
     energy,
     setInputText,
     send,
-    sendREST,
     startChat,
     clearChat,
   };

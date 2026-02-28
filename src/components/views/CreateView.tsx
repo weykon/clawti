@@ -22,7 +22,7 @@ export function CreateView() {
   const language = useUIStore(s => s.language);
   const { setActiveView, setEnergy } = useUIStore();
   const {
-    createFlow, createStep, createForm, isGenerating, generatingField, isPremium,
+    createFlow, createStep, createForm, isGenerating, generatingField, createError, isPremium,
     showAgeVerification, importType, importUrl, importFile, importPreview,
     setCreateFlow, setCreateStep, setCreateForm, setShowAgeVerification,
     setImportType, setImportUrl, handleImportFile, handleGenerateCharacter,
@@ -79,6 +79,12 @@ export function CreateView() {
           ))}
         </div>
       </div>
+
+      {createError && (
+        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-2xl text-red-600 text-xs text-center animate-in fade-in">
+          {createError}
+        </div>
+      )}
 
       {/* Progress Bar */}
       {createFlow !== 'simple' && (

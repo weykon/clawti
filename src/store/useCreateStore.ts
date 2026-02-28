@@ -32,6 +32,7 @@ interface CreateState {
   createForm: CreateFormState;
   isGenerating: boolean;
   generatingField: string | null;
+  createError: string | null;
   isPremium: boolean;
   showAgeVerification: boolean;
   importType: 'file' | 'url';
@@ -44,6 +45,7 @@ interface CreateActions {
   setCreateFlow: (flow: CreateState['createFlow']) => void;
   setCreateStep: (step: number) => void;
   setCreateForm: (form: Partial<CreateFormState>) => void;
+  setCreateError: (err: string | null) => void;
   setIsPremium: (v: boolean) => void;
   setShowAgeVerification: (v: boolean) => void;
   setImportType: (t: 'file' | 'url') => void;
@@ -65,6 +67,7 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
   createForm: { ...DEFAULT_FORM },
   isGenerating: false,
   generatingField: null,
+  createError: null,
   isPremium: false,
   showAgeVerification: false,
   importType: 'file',
@@ -75,6 +78,7 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
   setCreateFlow: (flow) => set({ createFlow: flow, createStep: 1 }),
   setCreateStep: (step) => set({ createStep: step }),
   setCreateForm: (form) => set(s => ({ createForm: { ...s.createForm, ...form } })),
+  setCreateError: (err) => set({ createError: err }),
   setIsPremium: (v) => set({ isPremium: v }),
   setShowAgeVerification: (v) => set({ showAgeVerification: v }),
   setImportType: (t) => set({ importType: t }),
@@ -108,7 +112,8 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Generation failed';
       console.error(`Failed to generate ${field}:`, msg);
-      alert(`AI generation failed: ${msg}`);
+      set({ createError: `AI generation failed: ${msg}` });
+      setTimeout(() => set({ createError: null }), 5000);
     } finally {
       set({ generatingField: null });
     }
@@ -229,7 +234,8 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
 
       set({ createForm: { ...DEFAULT_FORM }, createStep: 1, importFile: null, importPreview: null, importUrl: '' });
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to create creature');
+      set({ createError: error instanceof Error ? error.message : 'Failed to create creature' });
+      setTimeout(() => set({ createError: null }), 5000);
     } finally {
       set({ isGenerating: false });
     }
