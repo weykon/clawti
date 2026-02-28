@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { useAuthStore } from './store/useAuthStore';
 import { useUIStore } from './store/useUIStore';
@@ -32,10 +32,16 @@ export default function App() {
   const { setCharacters, setFriends } = useCreatureStore();
   const { setProfileData } = useAuthStore();
 
-  // Initialize: load creatures (public) + validate token
+  // Wire up 401 auto-logout: expired tokens trigger logout + public data reload
+  useEffect(() => {
+    api.onUnauthorized(() => {
+      useAuthStore.setState({ isLoggedIn: false, profileData: null });
+    });
+  }, []);
+
+  // Initialize: validate stored token + load initial data
   useEffect(() => {
     if (api.getToken()) {
-      // Logged in: validate token, then load all user data (includes discover)
       api.auth.me()
         .then(() => {
           useAuthStore.setState({ isLoggedIn: true });
@@ -47,10 +53,21 @@ export default function App() {
           loadPublicDiscover();
         });
     } else {
-      // Not logged in: just load public discover
       loadPublicDiscover();
     }
   }, []);
+
+  // Post-login data refresh: load user data when login state transitions false → true
+  const prevLoggedIn = useRef(isLoggedIn);
+  useEffect(() => {
+    if (isLoggedIn && !prevLoggedIn.current) {
+      loadUserData();
+    }
+    if (!isLoggedIn && prevLoggedIn.current) {
+      loadPublicDiscover();
+    }
+    prevLoggedIn.current = isLoggedIn;
+  }, [isLoggedIn]);
 
   const loadPublicDiscover = () => {
     api.creatures.discover({ limit: 50 }).then(res => {

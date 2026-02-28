@@ -22,6 +22,7 @@ const DEFAULT_TIMEOUT = 30_000; // 30 seconds
 class ApiClient {
   private token: string | null = typeof window !== 'undefined' ? localStorage.getItem('vc_token') : null;
   private activeControllers = new Set<AbortController>();
+  private unauthorizedHandler?: () => void;
 
   setToken(token: string | null) {
     this.token = token;
@@ -32,6 +33,11 @@ class ApiClient {
   }
 
   getToken() { return this.token; }
+
+  /** Register a callback for 401 responses (e.g. auto-logout) */
+  onUnauthorized(handler: () => void) {
+    this.unauthorizedHandler = handler;
+  }
 
   /** Cancel all in-flight requests */
   cancelAll() {
@@ -56,6 +62,10 @@ class ApiClient {
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          this.setToken(null);
+          this.unauthorizedHandler?.();
+        }
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
         throw new Error(err.error || `HTTP ${res.status}`);
       }
@@ -86,6 +96,10 @@ class ApiClient {
         body: JSON.stringify(body),
         signal: controller.signal,
       });
+      if (res.status === 401) {
+        this.setToken(null);
+        this.unauthorizedHandler?.();
+      }
       clearTimeout(timer);
       this.activeControllers.delete(controller);
       return res;

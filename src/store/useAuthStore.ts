@@ -38,6 +38,10 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   handleAuth: async () => {
     const { authMode, authForm } = get();
     set({ authLoading: true, authError: '' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authForm.email)) {
+      set({ authError: 'Please enter a valid email address', authLoading: false });
+      return;
+    }
     try {
       let res;
       if (authMode === 'register') {

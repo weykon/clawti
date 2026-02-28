@@ -7,7 +7,7 @@ import { useTranslation } from '../../i18n/useTranslation';
 
 export function LoginScreen() {
   const t = useTranslation();
-  const { authMode, authForm, authError, authLoading, setAuthMode, setAuthForm, handleAuth } = useAuthStore();
+  const { authMode, authForm, authError, authLoading, setAuthMode, setAuthForm, setAuthError, handleAuth } = useAuthStore();
 
   return (
     <motion.div
@@ -32,7 +32,8 @@ export function LoginScreen() {
           <input
             type="text"
             value={authForm.username}
-            onChange={(e) => setAuthForm({ username: e.target.value })}
+            onChange={(e) => { setAuthForm({ username: e.target.value }); if (authError) setAuthError(''); }}
+            onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
             placeholder={t.username}
             className="w-full bg-ramos-gray border border-ramos-border rounded-[24px] p-5 text-sm focus:outline-none focus:border-ramos-accent/50 transition-all font-medium"
           />
@@ -40,16 +41,17 @@ export function LoginScreen() {
         <input
           type="email"
           value={authForm.email}
-          onChange={(e) => setAuthForm({ email: e.target.value })}
+          onChange={(e) => { setAuthForm({ email: e.target.value }); if (authError) setAuthError(''); }}
+          onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
           placeholder={t.email}
           className="w-full bg-ramos-gray border border-ramos-border rounded-[24px] p-5 text-sm focus:outline-none focus:border-ramos-accent/50 transition-all font-medium"
         />
         <input
           type="password"
           value={authForm.password}
-          onChange={(e) => setAuthForm({ password: e.target.value })}
-          placeholder={t.password}
+          onChange={(e) => { setAuthForm({ password: e.target.value }); if (authError) setAuthError(''); }}
           onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+          placeholder={t.password}
           className="w-full bg-ramos-gray border border-ramos-border rounded-[24px] p-5 text-sm focus:outline-none focus:border-ramos-accent/50 transition-all font-medium"
         />
         <button
