@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { ArrowLeft, MessageSquare, Users, Sparkles, Mic, Gift, Send } from 'lucide-react';
@@ -24,16 +24,20 @@ export function ChatView() {
   const { characters, friends } = useCreatureStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const msgCount = messages.length;
+  const currentMessages = selectedCharacter ? messages[selectedCharacter.id] || [] : [];
+  const msgCount = currentMessages.length;
+  const lastMsgContent = currentMessages[currentMessages.length - 1]?.content;
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [msgCount, selectedCharacter?.id]);
+  }, [msgCount, lastMsgContent, selectedCharacter?.id]);
 
   // Build active chats from characters that have messages
-  const allChars = [...characters, ...friends];
-  const activeChats = Object.keys(messages)
-    .map(id => allChars.find(c => c.id === id))
-    .filter((c): c is Character => !!c);
+  const activeChats = useMemo(() => {
+    const allChars = [...characters, ...friends];
+    return Object.keys(messages)
+      .map(id => allChars.find(c => c.id === id))
+      .filter((c): c is Character => !!c);
+  }, [messages, characters, friends]);
 
   const handleSendMessage = () => {
     if (!inputText.trim() || !selectedCharacter || energy <= 0) return;

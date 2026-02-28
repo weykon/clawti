@@ -175,16 +175,8 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
     set({ inputText: '', isTyping: true, isStreaming: true });
 
     try {
-      // Server handles history from DB — no client-side history needed
-      const token = api.getToken();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch('/api/chat/stream', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ characterId: charId, message: content }),
-      });
+      // Use API client for auth header injection, timeout management, and 401 interception
+      const res = await api.chat.stream(charId, content);
 
       if (!res.ok || !res.body) {
         // Fallback to REST
