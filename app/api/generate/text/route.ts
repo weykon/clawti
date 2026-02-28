@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/src/lib/requireAuth';
+import { authRoute } from '@/src/lib/apiRoute';
 
 /**
  * Direct LLM call for text generation — bypasses Alan's pipeline entirely.
@@ -52,87 +52,76 @@ const FIELD_PROMPTS: Record<string, (ctx: Record<string, unknown>) => string> = 
     '请直接输出描述内容。',
 };
 
-export async function POST(req: NextRequest) {
-  try {
-    requireAuth(req);
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const POST = authRoute(async (req) => {
+  const { field, context } = await req.json();
+
+  if (!field || !FIELD_PROMPTS[field]) {
+    return NextResponse.json(
+      { error: `Invalid field. Supported: ${Object.keys(FIELD_PROMPTS).join(', ')}` },
+      { status: 400 }
+    );
   }
 
-  try {
-    const { field, context } = await req.json();
+  if (!LLM_API_KEY) {
+    return NextResponse.json({ error: 'LLM API key not configured' }, { status: 500 });
+  }
 
-    if (!field || !FIELD_PROMPTS[field]) {
+  const prompt = FIELD_PROMPTS[field](context || {});
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT);
+
+  try {
+    // Direct OpenAI-compatible call to Kimi (bypasses Alan's mutex-protected pipeline)
+    const url = `${LLM_BASE_URL.replace(/\/$/, '')}/chat/completions`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${LLM_API_KEY}`,
+        'User-Agent': 'KimiCLI/0.77',
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: LLM_MODEL,
+        max_completion_tokens: 2048,
+        messages: [
+          { role: 'system', content: GENERATION_SYSTEM },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => 'LLM service error');
+      console.error(`[generate/text] LLM returned ${res.status} for field="${field}":`, errText);
       return NextResponse.json(
-        { error: `Invalid field. Supported: ${Object.keys(FIELD_PROMPTS).join(', ')}` },
-        { status: 400 }
+        { error: `Generation failed (${res.status})` },
+        { status: 502 }
       );
     }
 
-    if (!LLM_API_KEY) {
-      return NextResponse.json({ error: 'LLM API key not configured' }, { status: 500 });
+    const data = await res.json();
+    // OpenAI format: choices[0].message.content
+    const text = data.choices?.[0]?.message?.content || '';
+
+    if (!text) {
+      console.warn(`[generate/text] Empty LLM response for field="${field}"`);
+      return NextResponse.json(
+        { error: 'AI returned empty response. Please try again.' },
+        { status: 502 }
+      );
     }
 
-    const prompt = FIELD_PROMPTS[field](context || {});
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT);
-
-    try {
-      // Direct OpenAI-compatible call to Kimi (bypasses Alan's mutex-protected pipeline)
-      const url = `${LLM_BASE_URL.replace(/\/$/, '')}/chat/completions`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${LLM_API_KEY}`,
-          'User-Agent': 'KimiCLI/0.77',
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: LLM_MODEL,
-          max_completion_tokens: 2048,
-          messages: [
-            { role: 'system', content: GENERATION_SYSTEM },
-            { role: 'user', content: prompt },
-          ],
-        }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => 'LLM service error');
-        console.error(`[generate/text] LLM returned ${res.status} for field="${field}":`, errText);
-        return NextResponse.json(
-          { error: `Generation failed (${res.status})` },
-          { status: 502 }
-        );
-      }
-
-      const data = await res.json();
-      // OpenAI format: choices[0].message.content
-      const text = data.choices?.[0]?.message?.content || '';
-
-      if (!text) {
-        console.warn(`[generate/text] Empty LLM response for field="${field}"`);
-        return NextResponse.json(
-          { error: 'AI returned empty response. Please try again.' },
-          { status: 502 }
-        );
-      }
-
-      return NextResponse.json({ text: text.trim() });
-    } finally {
-      clearTimeout(timer);
-    }
+    return NextResponse.json({ text: text.trim() });
   } catch (err) {
+    clearTimeout(timer);
     if (err instanceof DOMException && err.name === 'AbortError') {
       console.error('[generate/text] LLM request timed out');
       return NextResponse.json({ error: 'Generation timed out. Please try again.' }, { status: 504 });
     }
-    console.error('[generate/text] Error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal server error' },
-      { status: 500 }
-    );
+    throw err; // Let authRoute handle generic errors
+  } finally {
+    clearTimeout(timer);
   }
-}
+});

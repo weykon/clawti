@@ -1,22 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { queryOne } from '@/src/lib/db';
-import { requireAuth } from '@/src/lib/requireAuth';
+import { authRoute } from '@/src/lib/apiRoute';
 
-export async function GET(req: NextRequest) {
-  try {
-    const { userId } = requireAuth(req);
+export const GET = authRoute(async (_req, { userId }) => {
+  const profile = await queryOne<{ energy: number }>(
+    'SELECT energy FROM user_profiles WHERE user_id = $1',
+    [userId]
+  );
 
-    const profile = await queryOne<{ energy: number }>(
-      'SELECT energy FROM user_profiles WHERE user_id = $1',
-      [userId]
-    );
-
-    return NextResponse.json({ energy: profile?.energy ?? 1000 });
-  } catch (err) {
-    if (err instanceof Error && err.message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.error('Energy GET error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
+  return NextResponse.json({ energy: profile?.energy ?? 1000 });
+});

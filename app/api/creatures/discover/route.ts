@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/src/lib/db';
+import { mapCreatureRow } from '@/src/lib/mapCreatureRow';
 
 export async function GET(req: NextRequest) {
   try {
@@ -28,25 +29,7 @@ export async function GET(req: NextRequest) {
 
     const rows = await query(sql, params);
 
-    const creatures = rows.map(r => ({
-      id: r.id,
-      agentId: r.id,
-      name: r.name,
-      bio: r.bio,
-      personality: r.personality,
-      greeting: r.greeting,
-      firstMes: r.first_mes,
-      gender: r.gender,
-      age: r.age,
-      occupation: r.occupation,
-      worldDescription: r.world_description,
-      photos: r.photos || [],
-      rating: parseFloat(r.rating) || 0,
-      creatorId: r.creator_id,
-      chatCount: parseInt(r.chat_count) || 0,
-    }));
-
-    return NextResponse.json({ creatures });
+    return NextResponse.json({ creatures: rows.map(mapCreatureRow) });
   } catch (err) {
     console.error('Discover error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
