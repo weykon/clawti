@@ -259,7 +259,7 @@ function ChatConversation({
       {/* Input */}
       <div className="fixed bottom-12 left-0 right-0 max-w-md mx-auto px-6 z-30 md:relative md:bottom-0 md:max-w-none md:pb-12 md:pt-4 bg-transparent">
         <div className="relative flex items-center bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[40px] p-2 shadow-2xl">
-          <button aria-label="Voice input" className="p-3 text-white/60 hover:text-white transition-colors">
+          <button aria-label="Voice input" disabled className="p-3 text-white/20 cursor-not-allowed" title="Coming soon">
             <Mic className="w-5 h-5" />
           </button>
           <input
@@ -273,7 +273,7 @@ function ChatConversation({
             className="flex-1 bg-transparent border-none py-4 px-3 text-sm focus:outline-none disabled:opacity-50 font-medium text-white placeholder:text-white/30"
           />
           <div className="flex items-center gap-1 pr-1">
-            <button aria-label="Send gift" className="p-3 text-white/60 hover:text-white transition-colors">
+            <button aria-label="Send gift" disabled className="p-3 text-white/20 cursor-not-allowed" title="Coming soon">
               <Gift className="w-5 h-5" />
             </button>
             <button

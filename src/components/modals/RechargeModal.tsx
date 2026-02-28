@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Zap, Gift, Check, Users, Sparkles, CreditCard, ChevronRight } from 'lucide-react';
+import { X, Zap, Gift, Check, Users, Sparkles, CreditCard, ChevronRight, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { useUIStore } from '../../store/useUIStore';
 import { useTranslation } from '../../i18n/useTranslation';
@@ -10,6 +11,8 @@ import { useEscapeClose } from '../../hooks/useEscapeClose';
 
 export function RechargeModal() {
   const t = useTranslation();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkinLoading, setCheckinLoading] = useState(false);
   const {
     isRechargeOpen, setRechargeOpen, rechargeTab, setRechargeTab,
     isPaymentOpen, setPaymentOpen, selectedPlan, setSelectedPlan,
@@ -116,28 +119,45 @@ export function RechargeModal() {
 
                 {rechargeTab === 'earn' && (
                   <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {[
-                      { icon: <Check className="w-6 h-6" />, label: 'Daily Check-in', reward: '+50 Energy', action: async () => {
+                    <button
+                      disabled={checkinLoading}
+                      onClick={async () => {
+                        if (checkinLoading) return;
+                        setCheckinLoading(true);
                         try {
                           const res = await api.user.dailyCheckin();
                           setEnergy(res.energy ?? res.newBalance ?? res.new_balance ?? energy + 50);
                           showRechargeNotice(`+${res.energyGained ?? res.energy_gained ?? 50} Energy!`);
                         } catch (err) {
                           showRechargeNotice(err instanceof Error ? err.message : 'Check-in failed');
+                        } finally {
+                          setCheckinLoading(false);
                         }
-                      }},
-                      { icon: <Users className="w-6 h-6" />, label: 'Share with Friends', reward: '+50 Energy', action: () => {} },
-                      { icon: <Sparkles className="w-6 h-6" />, label: 'Watch Ad', reward: '+5 Energy', action: () => {} }
+                      }}
+                      className="w-full p-6 bg-ramos-gray border border-ramos-border rounded-[32px] flex items-center gap-5 hover:bg-ramos-border transition-all group disabled:opacity-60"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-ramos-accent shadow-sm">
+                        {checkinLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Check className="w-6 h-6" />}
+                      </div>
+                      <div className="text-left">
+                        <h4 className="text-lg font-bold">Daily Check-in</h4>
+                        <p className="text-xs text-ramos-muted">{t.completeToEarn}</p>
+                      </div>
+                      <span className="ml-auto text-ramos-accent font-bold">+50 Energy</span>
+                    </button>
+                    {[
+                      { icon: <Users className="w-6 h-6" />, label: 'Share with Friends', reward: '+50 Energy' },
+                      { icon: <Sparkles className="w-6 h-6" />, label: 'Watch Ad', reward: '+5 Energy' },
                     ].map((task) => (
-                      <button key={task.label} onClick={task.action} className="w-full p-6 bg-ramos-gray border border-ramos-border rounded-[32px] flex items-center gap-5 hover:bg-ramos-border transition-all group">
+                      <button key={task.label} disabled className="w-full p-6 bg-ramos-gray border border-ramos-border rounded-[32px] flex items-center gap-5 opacity-50 cursor-not-allowed">
                         <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-ramos-accent shadow-sm">
                           {task.icon}
                         </div>
                         <div className="text-left">
                           <h4 className="text-lg font-bold">{task.label}</h4>
-                          <p className="text-xs text-ramos-muted">{t.completeToEarn}</p>
+                          <p className="text-xs text-ramos-muted">{t.comingSoon}</p>
                         </div>
-                        <span className="ml-auto text-ramos-accent font-bold">{task.reward}</span>
+                        <span className="ml-auto text-ramos-muted font-bold">{task.reward}</span>
                       </button>
                     ))}
                   </div>
@@ -170,9 +190,11 @@ export function RechargeModal() {
               <div className="space-y-4">
                 <p className="text-[10px] text-ramos-muted uppercase tracking-widest font-bold">{t.selectPayment}</p>
                 <button
+                  disabled={checkoutLoading}
                   onClick={async () => {
+                    if (checkoutLoading) return;
+                    setCheckoutLoading(true);
                     try {
-                      // Determine the priceKey from selectedPlan
                       let priceKey = '';
                       if (selectedPlan?.label === 'Basic Soul') priceKey = 'basic';
                       else if (selectedPlan?.label === 'Explorer') priceKey = 'explorer';
@@ -196,18 +218,20 @@ export function RechargeModal() {
                       }
                     } catch {
                       showRechargeNotice('Payment service unavailable');
+                    } finally {
+                      setCheckoutLoading(false);
                     }
                   }}
-                  className="w-full p-6 bg-ramos-gray border border-ramos-border rounded-[32px] flex items-center gap-4 hover:bg-ramos-border transition-all group"
+                  className="w-full p-6 bg-ramos-gray border border-ramos-border rounded-[32px] flex items-center gap-4 hover:bg-ramos-border transition-all group disabled:opacity-60"
                 >
                   <div className="w-12 h-12 rounded-2xl bg-[#635BFF] flex items-center justify-center text-white shadow-lg">
-                    <CreditCard className="w-6 h-6" />
+                    {checkoutLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <CreditCard className="w-6 h-6" />}
                   </div>
                   <div className="text-left">
                     <h4 className="font-bold">{t.stripe}</h4>
-                    <p className="text-[10px] text-ramos-muted">{t.creditDebitCard}</p>
+                    <p className="text-[10px] text-ramos-muted">{checkoutLoading ? 'Redirecting...' : t.creditDebitCard}</p>
                   </div>
-                  <ChevronRight className="ml-auto w-5 h-5 text-ramos-muted" />
+                  {!checkoutLoading && <ChevronRight className="ml-auto w-5 h-5 text-ramos-muted" />}
                 </button>
 
                 <button
