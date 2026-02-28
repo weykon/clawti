@@ -30,6 +30,13 @@ interface ChatActions {
   resetAll: () => void;
 }
 
+let chatErrorTimer: ReturnType<typeof setTimeout> | null = null;
+function setChatErrorWithAutoClear(set: (fn: Partial<ChatState>) => void, msg: string) {
+  if (chatErrorTimer) clearTimeout(chatErrorTimer);
+  set({ chatError: msg });
+  chatErrorTimer = setTimeout(() => set({ chatError: null }), 5000);
+}
+
 export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
   messages: {},
   selectedCharacter: null,
@@ -152,8 +159,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       get().addMessage(charId, aiMsg);
       if (result.energyRemaining != null) onEnergyUpdate(result.energyRemaining);
     } catch (error) {
-      set({ chatError: error instanceof Error ? error.message : 'Failed to send message' });
-      setTimeout(() => set({ chatError: null }), 5000);
+      setChatErrorWithAutoClear(set, error instanceof Error ? error.message : 'Failed to send message');
     } finally {
       set({ isTyping: false });
     }
@@ -194,8 +200,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
           get().addMessage(charId, aiMsg);
           if (result.energyRemaining != null) onEnergyUpdate(result.energyRemaining);
         } catch (error) {
-          set({ chatError: error instanceof Error ? error.message : 'Failed to send message' });
-          setTimeout(() => set({ chatError: null }), 5000);
+          setChatErrorWithAutoClear(set, error instanceof Error ? error.message : 'Failed to send message');
         } finally {
           set({ isTyping: false });
         }
@@ -234,8 +239,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
     } catch (error) {
       // Finalize any partially-streamed message so it doesn't stay stuck in streaming state
       finalizeStreamingMessage(charId);
-      set({ chatError: error instanceof Error ? error.message : 'Stream failed' });
-      setTimeout(() => set({ chatError: null }), 5000);
+      setChatErrorWithAutoClear(set, error instanceof Error ? error.message : 'Stream failed');
     } finally {
       set({ isTyping: false, isStreaming: false });
     }

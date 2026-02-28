@@ -61,6 +61,13 @@ interface CreateActions {
   ) => Promise<void>;
 }
 
+let createErrorTimer: ReturnType<typeof setTimeout> | null = null;
+function setCreateErrorWithAutoClear(set: (fn: Partial<CreateState>) => void, msg: string) {
+  if (createErrorTimer) clearTimeout(createErrorTimer);
+  set({ createError: msg });
+  createErrorTimer = setTimeout(() => set({ createError: null }), 5000);
+}
+
 export const useCreateStore = create<CreateState & CreateActions>((set, get) => ({
   createFlow: 'simple',
   createStep: 1,
@@ -112,8 +119,7 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Generation failed';
       console.error(`Failed to generate ${field}:`, msg);
-      set({ createError: `AI generation failed: ${msg}` });
-      setTimeout(() => set({ createError: null }), 5000);
+      setCreateErrorWithAutoClear(set, `AI generation failed: ${msg}`);
     } finally {
       set({ generatingField: null });
     }
@@ -234,8 +240,7 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
 
       set({ createForm: { ...DEFAULT_FORM }, createStep: 1, importFile: null, importPreview: null, importUrl: '' });
     } catch (error) {
-      set({ createError: error instanceof Error ? error.message : 'Failed to create creature' });
-      setTimeout(() => set({ createError: null }), 5000);
+      setCreateErrorWithAutoClear(set, error instanceof Error ? error.message : 'Failed to create creature');
     } finally {
       set({ isGenerating: false });
     }

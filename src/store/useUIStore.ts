@@ -42,6 +42,8 @@ interface UIActions {
 // Always 'en' on first render for SSR consistency — layout detects browser lang in useEffect
 const getInitialLanguage = (): Language => 'en';
 
+let rechargeNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useUIStore = create<UIState & UIActions>((set) => ({
   language: getInitialLanguage(),
   activeView: 'discover',
@@ -71,8 +73,9 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
   setSelectedPlan: (plan) => set({ selectedPlan: plan }),
   setRechargeTab: (tab) => set({ rechargeTab: tab }),
   showRechargeNotice: (msg) => {
+    if (rechargeNoticeTimer) clearTimeout(rechargeNoticeTimer);
     set({ rechargeNotice: msg });
-    setTimeout(() => set({ rechargeNotice: null }), 4000);
+    rechargeNoticeTimer = setTimeout(() => set({ rechargeNotice: null }), 4000);
   },
   closeAllModals: () => set({
     isFilterOpen: false,

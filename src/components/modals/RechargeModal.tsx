@@ -163,7 +163,7 @@ export function RechargeModal() {
             >
               <div className="text-center">
                 <h3 className="text-2xl text-display mb-2">{t.checkout}</h3>
-                <p className="text-ramos-muted text-sm">You are purchasing {selectedPlan?.label || selectedPlan?.energy + ' Energy'}</p>
+                <p className="text-ramos-muted text-sm">You are purchasing {selectedPlan?.label || `${selectedPlan?.energy ?? '?'} Energy`}</p>
                 <div className="mt-4 text-3xl font-bold text-ramos-accent">{selectedPlan?.price}</div>
               </div>
 
