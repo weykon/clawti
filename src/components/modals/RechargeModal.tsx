@@ -13,7 +13,7 @@ export function RechargeModal() {
   const {
     isRechargeOpen, setRechargeOpen, rechargeTab, setRechargeTab,
     isPaymentOpen, setPaymentOpen, selectedPlan, setSelectedPlan,
-    energy, setEnergy,
+    energy, setEnergy, rechargeNotice, showRechargeNotice,
   } = useUIStore();
   useEscapeClose(isRechargeOpen, () => setRechargeOpen(false));
 
@@ -48,6 +48,12 @@ export function RechargeModal() {
                 </div>
                 <button onClick={() => setRechargeOpen(false)} className="p-2 rounded-full hover:bg-ramos-gray"><X className="w-6 h-6" /></button>
               </div>
+
+              {rechargeNotice && (
+                <div className="p-3 bg-ramos-accent/10 border border-ramos-accent/30 rounded-2xl text-ramos-accent text-xs text-center animate-in fade-in font-medium">
+                  {rechargeNotice}
+                </div>
+              )}
 
               <div className="space-y-4 min-h-[300px]">
                 {rechargeTab === 'subscribe' && (
@@ -114,10 +120,10 @@ export function RechargeModal() {
                       { icon: <Check className="w-6 h-6" />, label: 'Daily Check-in', reward: '+50 Energy', action: async () => {
                         try {
                           const res = await api.user.dailyCheckin();
-                          setEnergy(res.newBalance ?? res.new_balance ?? energy + 50);
-                          alert(`+${res.energyGained ?? res.energy_gained ?? 50} Energy!`);
+                          setEnergy(res.energy ?? res.newBalance ?? res.new_balance ?? energy + 50);
+                          showRechargeNotice(`+${res.energyGained ?? res.energy_gained ?? 50} Energy!`);
                         } catch (err) {
-                          alert(err instanceof Error ? err.message : 'Check-in failed');
+                          showRechargeNotice(err instanceof Error ? err.message : 'Check-in failed');
                         }
                       }},
                       { icon: <Users className="w-6 h-6" />, label: 'Share with Friends', reward: '+50 Energy', action: () => {} },
@@ -177,7 +183,10 @@ export function RechargeModal() {
                       else if (selectedPlan?.energy === '2500') priceKey = 'energy_2500';
                       else if (selectedPlan?.label === 'Lucky Gift Box') priceKey = 'lucky_box';
 
-                      if (!priceKey) { alert('Unknown plan'); return; }
+                      if (!priceKey) {
+                        showRechargeNotice('Unknown plan');
+                        return;
+                      }
 
                       const res = await fetch('/api/stripe/checkout', {
                         method: 'POST',
@@ -188,10 +197,10 @@ export function RechargeModal() {
                       if (data.url) {
                         window.location.href = data.url;
                       } else {
-                        alert(data.error || 'Checkout failed');
+                        showRechargeNotice(data.error || 'Checkout failed');
                       }
                     } catch {
-                      alert('Payment service unavailable');
+                      showRechargeNotice('Payment service unavailable');
                     }
                   }}
                   className="w-full p-6 bg-ramos-gray border border-ramos-border rounded-[32px] flex items-center gap-4 hover:bg-ramos-border transition-all group"
@@ -207,7 +216,7 @@ export function RechargeModal() {
                 </button>
 
                 <button
-                  onClick={() => { alert(t.web3Payment); setPaymentOpen(false); setRechargeOpen(false); }}
+                  onClick={() => { showRechargeNotice(t.web3Payment); setPaymentOpen(false); setRechargeOpen(false); }}
                   className="w-full p-6 bg-ramos-gray border border-ramos-border rounded-[32px] flex items-center gap-4 hover:bg-ramos-border transition-all group"
                 >
                   <div className="w-12 h-12 rounded-2xl bg-ramos-accent flex items-center justify-center text-white shadow-lg">

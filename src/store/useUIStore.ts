@@ -19,6 +19,7 @@ interface UIState {
   isPaymentOpen: boolean;
   selectedPlan: { label?: string; energy?: string; price: string } | null;
   rechargeTab: 'subscribe' | 'recharge' | 'earn';
+  rechargeNotice: string | null;
 }
 
 interface UIActions {
@@ -35,6 +36,7 @@ interface UIActions {
   setPaymentOpen: (v: boolean) => void;
   setSelectedPlan: (plan: UIState['selectedPlan']) => void;
   setRechargeTab: (tab: UIState['rechargeTab']) => void;
+  showRechargeNotice: (msg: string) => void;
   closeAllModals: () => void;
 }
 
@@ -54,6 +56,7 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
   isPaymentOpen: false,
   selectedPlan: null,
   rechargeTab: 'recharge',
+  rechargeNotice: null,
 
   setLanguage: (lang) => set({ language: lang }),
   toggleLanguage: () => set(s => ({ language: s.language === 'en' ? 'zh' : 'en' })),
@@ -73,6 +76,10 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
   setPaymentOpen: (v) => set({ isPaymentOpen: v }),
   setSelectedPlan: (plan) => set({ selectedPlan: plan }),
   setRechargeTab: (tab) => set({ rechargeTab: tab }),
+  showRechargeNotice: (msg) => {
+    set({ rechargeNotice: msg });
+    setTimeout(() => set({ rechargeNotice: null }), 4000);
+  },
   closeAllModals: () => set({
     isFilterOpen: false,
     isFriendsListOpen: false,
