@@ -12,16 +12,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
-    const profile = await queryOne<{ energy: number }>(
-      'SELECT energy FROM user_profiles WHERE user_id = $1',
+    // Atomic energy deduction — prevents race conditions from concurrent creation requests
+    const deducted = await queryOne<{ energy: number }>(
+      'UPDATE user_profiles SET energy = energy - 100 WHERE user_id = $1 AND energy >= 100 RETURNING energy',
       [userId]
     );
-    const currentEnergy = profile?.energy ?? 0;
-    if (currentEnergy < 100) {
+    if (!deducted) {
       return NextResponse.json({ error: 'Not enough energy (need 100)' }, { status: 400 });
     }
-
-    await query('UPDATE user_profiles SET energy = energy - 100 WHERE user_id = $1', [userId]);
 
     const row = await queryOne<{ id: string }>(
       `INSERT INTO creatures (creator_id, name, bio, personality, greeting, first_mes, gender, age, occupation, world_description, photos)
@@ -42,15 +40,10 @@ export async function POST(req: NextRequest) {
       ]
     );
 
-    const updatedProfile = await queryOne<{ energy: number }>(
-      'SELECT energy FROM user_profiles WHERE user_id = $1',
-      [userId]
-    );
-
     return NextResponse.json({
       id: row!.id,
       agentId: row!.id,
-      energyRemaining: updatedProfile?.energy ?? currentEnergy - 100,
+      energyRemaining: deducted.energy,
     });
   } catch (err) {
     if (err instanceof Error && err.message === 'Unauthorized') {

@@ -152,8 +152,8 @@ export function DiscoverView() {
                       <h2 className="text-4xl text-display text-white text-dense mb-0.5">{currentDiscoverChar.name}</h2>
 
                       <div className="flex flex-wrap gap-1.5">
-                        {(language === 'en' ? currentDiscoverChar.personality_en || currentDiscoverChar.personality : currentDiscoverChar.personality)
-                          .split(',').slice(0, 3).map((trait, i) => (
+                        {(language === 'en' ? currentDiscoverChar.personality_en || currentDiscoverChar.personality : currentDiscoverChar.personality || '')
+                          .split(',').slice(0, 3).filter(Boolean).map((trait, i) => (
                             <span key={i} className="px-2 py-0.5 bg-white/5 backdrop-blur-md rounded-full text-[9px] font-bold text-white/80 border border-white/5 uppercase tracking-wider">
                               {trait.trim()}
                             </span>
@@ -223,8 +223,8 @@ export function DiscoverView() {
                     {char.name}{char.age ? <span className="text-lg text-white/60 font-accent ml-2">{char.age}</span> : null}
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
-                    {(language === 'en' ? char.personality_en || char.personality : char.personality)
-                      .split(',').slice(0, 3).map((trait, i) => (
+                    {(language === 'en' ? char.personality_en || char.personality : char.personality || '')
+                      .split(',').slice(0, 3).filter(Boolean).map((trait, i) => (
                         <span key={i} className="px-2 py-0.5 bg-white/5 backdrop-blur-md rounded-full text-[9px] font-bold text-white/80 border border-white/5 uppercase tracking-wider">
                           {trait.trim()}
                         </span>

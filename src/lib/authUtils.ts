@@ -33,7 +33,7 @@ export function verifyJwt(token: string): Record<string, unknown> {
   if (parts.length !== 3) throw new Error('Invalid token');
   const [header, body, sig] = parts;
   const expected = createHmac('sha256', JWT_SECRET()).update(`${header}.${body}`).digest('base64url');
-  if (sig !== expected) throw new Error('Invalid signature');
+  if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) throw new Error('Invalid signature');
   const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
   if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) throw new Error('Token expired');
   return payload;

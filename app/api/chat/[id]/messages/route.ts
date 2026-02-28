@@ -11,7 +11,8 @@ export async function GET(
     const { id: creatureId } = await params;
 
     const url = new URL(req.url);
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 200);
+    const parsedLimit = parseInt(url.searchParams.get('limit') || '50', 10);
+    const limit = Math.min(Number.isNaN(parsedLimit) ? 50 : parsedLimit, 200);
 
     const rows = await query(
       `SELECT id, role, content, created_at

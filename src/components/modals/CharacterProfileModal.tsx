@@ -149,7 +149,7 @@ export function CharacterProfileModal() {
                 className="btn-primary w-full py-6 text-xl flex items-center justify-center gap-4"
               >
                 <MessageSquare className="w-7 h-7" />
-                Start Connection
+                {t.startConnection}
               </button>
             </div>
           </div>

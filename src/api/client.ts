@@ -87,7 +87,7 @@ class ApiClient {
         signal: controller.signal,
       });
       clearTimeout(timer);
-      // Don't delete controller yet — caller may still be reading the stream
+      this.activeControllers.delete(controller);
       return res;
     } catch (err) {
       clearTimeout(timer);
@@ -136,8 +136,8 @@ class ApiClient {
       this.request<ChatMessageResponse>('GET', `/chat/${creatureId}/messages?limit=${limit}`),
     send: (creatureId: string, content: string) =>
       this.request<SendMessageResponse>('POST', `/chat/${creatureId}/send`, { content }),
-    stream: (creatureId: string, content: string) =>
-      this.streamRequest(`/chat/${creatureId}/stream`, { content }),
+    stream: (characterId: string, message: string) =>
+      this.streamRequest('/chat/stream', { characterId, message }),
     clear: (creatureId: string) => this.request<{ success: boolean }>('DELETE', `/chat/${creatureId}`),
   };
 

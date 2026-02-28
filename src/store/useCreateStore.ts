@@ -106,7 +106,9 @@ export const useCreateStore = create<CreateState & CreateActions>((set, get) => 
         }
       }
     } catch (err) {
-      console.error(`Failed to generate ${field}:`, err);
+      const msg = err instanceof Error ? err.message : 'Generation failed';
+      console.error(`Failed to generate ${field}:`, msg);
+      alert(`AI generation failed: ${msg}`);
     } finally {
       set({ generatingField: null });
     }

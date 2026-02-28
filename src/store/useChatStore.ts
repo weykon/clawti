@@ -244,5 +244,14 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       return { messages: rest };
     }),
 
-  resetAll: () => set({ messages: {}, selectedCharacter: null }),
+  resetAll: () => set({
+    messages: {},
+    selectedCharacter: null,
+    switchingCharId: null,
+    inputText: '',
+    isTyping: false,
+    isStreaming: false,
+    chatError: null,
+    chatReady: true,
+  }),
 }));

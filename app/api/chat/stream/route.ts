@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query, queryOne } from '@/src/lib/db';
+import { query } from '@/src/lib/db';
 import { requireAuth } from '@/src/lib/requireAuth';
+import {
+  buildCharacterSystem,
+  deductEnergy,
+  getRecentHistory,
+  loadCreatureForPrompt,
+} from '@/src/lib/chatUtils';
 
 const ALAN_URL = process.env.ALAN_URL || 'http://localhost:7088';
+const ALAN_TIMEOUT = 30_000;
 
 export async function POST(req: NextRequest) {
   let userId: string;
@@ -16,19 +23,19 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { characterId, message } = body;
 
-    if (!message) {
+    if (!message?.trim()) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
-    // Check and deduct energy
-    const profile = await queryOne<{ energy: number }>(
-      'SELECT energy FROM user_profiles WHERE user_id = $1',
-      [userId]
-    );
-    if ((profile?.energy ?? 0) <= 0) {
+    if (!characterId) {
+      return NextResponse.json({ error: 'characterId is required' }, { status: 400 });
+    }
+
+    // Atomic energy deduction — prevents race conditions
+    const remaining = await deductEnergy(userId);
+    if (remaining === null) {
       return NextResponse.json({ error: 'Not enough energy' }, { status: 400 });
     }
-    await query('UPDATE user_profiles SET energy = energy - 1 WHERE user_id = $1', [userId]);
 
     // Persist user message before streaming
     await query(
@@ -37,53 +44,43 @@ export async function POST(req: NextRequest) {
       [userId, characterId, message]
     );
 
-    // Load character personality for per-character system prompt
-    let characterSystem = '';
-    if (characterId) {
-      const creature = await queryOne<{
-        name: string; personality: string; bio: string;
-        greeting: string; occupation: string; world_description: string;
-      }>(
-        'SELECT name, personality, bio, greeting, occupation, world_description FROM creatures WHERE id = $1',
-        [characterId]
-      );
-      if (creature) {
-        const parts = [`你是${creature.name}。`];
-        if (creature.personality) parts.push(`性格特点：${creature.personality}。`);
-        if (creature.bio) parts.push(`关于你：${creature.bio}`);
-        if (creature.occupation) parts.push(`职业：${creature.occupation}。`);
-        if (creature.world_description) parts.push(`世界背景：${creature.world_description}`);
-        parts.push('请始终以这个角色身份回应，保持角色的语气和性格特点。用中文回复。');
-        characterSystem = parts.join('\n');
+    // Load character + build system prompt (shared utility)
+    const creature = await loadCreatureForPrompt(characterId);
+    const characterSystem = creature ? buildCharacterSystem(creature) : '';
+
+    // Server-authoritative history (already includes the user message we just inserted)
+    const messages = await getRecentHistory(userId, characterId);
+
+    // Proxy to Alan with timeout
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ALAN_TIMEOUT);
+
+    let alanRes: Response;
+    try {
+      alanRes = await fetch(`${ALAN_URL}/v1/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: 'alan',
+          max_tokens: 1024,
+          messages,
+          stream: true,
+          ...(characterSystem ? { system: characterSystem } : {}),
+          metadata: { characterId, userId },
+        }),
+      });
+    } catch (err) {
+      clearTimeout(timer);
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return NextResponse.json({ error: 'AI service timed out' }, { status: 504 });
       }
+      throw err;
     }
-
-    // Build messages from DB history (server-authoritative, prevents cross-character contamination)
-    // The current user message was already persisted above, so it's included in the query results
-    const historyRows = await query<{ role: string; content: string }>(
-      `SELECT role, content FROM chat_messages
-       WHERE user_id = $1 AND creature_id = $2
-       ORDER BY created_at DESC LIMIT 20`,
-      [userId, characterId]
-    );
-    const messages: Array<{ role: string; content: string }> = historyRows.reverse();
-
-    // Proxy to Alan bot service with streaming
-    const alanRes = await fetch(`${ALAN_URL}/v1/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
-      },
-      body: JSON.stringify({
-        model: 'alan',
-        max_tokens: 1024,
-        messages,
-        stream: true,
-        ...(characterSystem ? { system: characterSystem } : {}),
-        metadata: { characterId, userId },
-      }),
-    });
+    clearTimeout(timer);
 
     if (!alanRes.ok) {
       const errText = await alanRes.text().catch(() => 'Alan service error');
@@ -98,22 +95,26 @@ export async function POST(req: NextRequest) {
     }
 
     // Tee the stream: pipe to client + collect full response for persistence
-    // Alan uses Anthropic SSE format: event: content_block_delta, data: { delta: { text } }
+    // IMPORTANT: Reuse a single TextDecoder with { stream: true } to handle
+    // multi-byte UTF-8 characters that may be split across chunk boundaries
     let fullResponse = '';
+    const decoder = new TextDecoder();
+    let sseBuffer = '';
+
     const transformStream = new TransformStream({
-      transform(chunk, controller) {
-        controller.enqueue(chunk);
-        const text = new TextDecoder().decode(chunk);
-        const lines = text.split('\n');
+      transform(chunk, ctrl) {
+        ctrl.enqueue(chunk);
+        sseBuffer += decoder.decode(chunk, { stream: true });
+        const lines = sseBuffer.split('\n');
+        // Keep the last (potentially incomplete) line in the buffer
+        sseBuffer = lines.pop() ?? '';
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const data = line.slice(6).trim();
           if (data === '[DONE]') continue;
           try {
             const parsed = JSON.parse(data);
-            // Anthropic format: content_block_delta has delta.text
             if (parsed.delta?.text) fullResponse += parsed.delta.text;
-            // Also handle simple { t: "token" } format as fallback
             else if (parsed.t) fullResponse += parsed.t;
           } catch {
             // skip non-JSON
@@ -121,6 +122,17 @@ export async function POST(req: NextRequest) {
         }
       },
       flush() {
+        // Process any remaining buffered data
+        if (sseBuffer.startsWith('data: ')) {
+          const data = sseBuffer.slice(6).trim();
+          if (data && data !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.delta?.text) fullResponse += parsed.delta.text;
+              else if (parsed.t) fullResponse += parsed.t;
+            } catch { /* skip */ }
+          }
+        }
         // Persist the complete assistant reply after stream ends
         if (fullResponse) {
           query(
@@ -132,7 +144,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Pipe the SSE stream through our transform and back to the client
     return new Response(alanRes.body.pipeThrough(transformStream), {
       headers: {
         'Content-Type': 'text/event-stream',

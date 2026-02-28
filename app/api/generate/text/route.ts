@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/src/lib/requireAuth';
 
-const ALAN_URL = process.env.ALAN_URL || 'http://localhost:7088';
+/**
+ * Direct LLM call for text generation — bypasses Alan's pipeline entirely.
+ *
+ * Why not use Alan?
+ * Alan's coordinator pipeline has a per-agent mutex that serializes all requests.
+ * If the upstream LLM hangs, the mutex locks for 60s, blocking ALL subsequent
+ * requests (including chat). For simple generation tasks we call the LLM directly
+ * using the same API key, avoiding the mutex bottleneck.
+ */
+
+const LLM_BASE_URL = process.env.LLM_BASE_URL || process.env.ALAN_S2_BASE_URL || 'https://api.kimi.com/coding/v1';
+const LLM_MODEL = process.env.LLM_MODEL || process.env.ALAN_S2_MODEL || 'kimi-for-coding';
+const LLM_API_KEY = process.env.LLM_API_KEY || process.env.ALAN_S2_API_KEY || '';
+const LLM_TIMEOUT = 45_000;
+
+const GENERATION_SYSTEM = '你是一个专业的角色创作助手。你的任务是根据用户的要求生成角色相关的文字内容。请直接输出请求的内容，不要添加任何前缀、后缀、解释或引号。不要进行角色扮演，只需完成创作任务。';
 
 const FIELD_PROMPTS: Record<string, (ctx: Record<string, unknown>) => string> = {
   bio: (ctx) =>
@@ -54,35 +69,67 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const prompt = FIELD_PROMPTS[field](context || {});
-
-    const alanRes = await fetch(`${ALAN_URL}/v1/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'alan',
-        max_tokens: 256,
-        messages: [{ role: 'user', content: prompt }],
-        stream: false,
-      }),
-    });
-
-    if (!alanRes.ok) {
-      const errText = await alanRes.text().catch(() => 'Generation service error');
-      return NextResponse.json(
-        { error: `Generation failed: ${errText}` },
-        { status: 502 }
-      );
+    if (!LLM_API_KEY) {
+      return NextResponse.json({ error: 'LLM API key not configured' }, { status: 500 });
     }
 
-    const data = await alanRes.json();
-    // Anthropic format: { content: [{ type: 'text', text: '...' }] }
-    const textBlock = data.content?.find?.((b: any) => b.type === 'text');
-    const text = textBlock?.text || data.reply || data.message || '';
+    const prompt = FIELD_PROMPTS[field](context || {});
 
-    return NextResponse.json({ text: text.trim() });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT);
+
+    try {
+      // Direct OpenAI-compatible call to Kimi (bypasses Alan's mutex-protected pipeline)
+      const url = `${LLM_BASE_URL.replace(/\/$/, '')}/chat/completions`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${LLM_API_KEY}`,
+          'User-Agent': 'KimiCLI/0.77',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: LLM_MODEL,
+          max_completion_tokens: 2048,
+          messages: [
+            { role: 'system', content: GENERATION_SYSTEM },
+            { role: 'user', content: prompt },
+          ],
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => 'LLM service error');
+        console.error(`[generate/text] LLM returned ${res.status} for field="${field}":`, errText);
+        return NextResponse.json(
+          { error: `Generation failed (${res.status})` },
+          { status: 502 }
+        );
+      }
+
+      const data = await res.json();
+      // OpenAI format: choices[0].message.content
+      const text = data.choices?.[0]?.message?.content || '';
+
+      if (!text) {
+        console.warn(`[generate/text] Empty LLM response for field="${field}"`);
+        return NextResponse.json(
+          { error: 'AI returned empty response. Please try again.' },
+          { status: 502 }
+        );
+      }
+
+      return NextResponse.json({ text: text.trim() });
+    } finally {
+      clearTimeout(timer);
+    }
   } catch (err) {
-    console.error('Text generation error:', err);
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      console.error('[generate/text] LLM request timed out');
+      return NextResponse.json({ error: 'Generation timed out. Please try again.' }, { status: 504 });
+    }
+    console.error('[generate/text] Error:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500 }

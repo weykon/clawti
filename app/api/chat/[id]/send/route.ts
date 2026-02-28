@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/src/lib/db';
 import { requireAuth } from '@/src/lib/requireAuth';
+import {
+  buildCharacterSystem,
+  deductEnergy,
+  getRecentHistory,
+  loadCreatureForPrompt,
+} from '@/src/lib/chatUtils';
 
 const ALAN_URL = process.env.ALAN_URL || 'http://localhost:7088';
+const ALAN_TIMEOUT = 30_000;
 
 export async function POST(
   req: NextRequest,
@@ -18,15 +25,11 @@ export async function POST(
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    // Check and deduct energy
-    const profile = await queryOne<{ energy: number }>(
-      'SELECT energy FROM user_profiles WHERE user_id = $1',
-      [userId]
-    );
-    if ((profile?.energy ?? 0) <= 0) {
+    // Atomic energy deduction
+    const remaining = await deductEnergy(userId);
+    if (remaining === null) {
       return NextResponse.json({ error: 'Not enough energy' }, { status: 400 });
     }
-    await query('UPDATE user_profiles SET energy = energy - 1 WHERE user_id = $1', [userId]);
 
     // Persist user message
     const userMsg = await queryOne<{ id: string; created_at: string }>(
@@ -36,41 +39,23 @@ export async function POST(
       [userId, creatureId, content]
     );
 
-    // Load character personality for per-character system prompt
-    let characterSystem = '';
-    const creature = await queryOne<{
-      name: string; personality: string; bio: string;
-      occupation: string; world_description: string;
-    }>(
-      'SELECT name, personality, bio, occupation, world_description FROM creatures WHERE id = $1',
-      [creatureId]
-    );
-    if (creature) {
-      const parts = [`你是${creature.name}。`];
-      if (creature.personality) parts.push(`性格特点：${creature.personality}。`);
-      if (creature.bio) parts.push(`关于你：${creature.bio}`);
-      if (creature.occupation) parts.push(`职业：${creature.occupation}。`);
-      if (creature.world_description) parts.push(`世界背景：${creature.world_description}`);
-      parts.push('请始终以这个角色身份回应，保持角色的语气和性格特点。用中文回复。');
-      characterSystem = parts.join('\n');
-    }
+    // Load character + build system prompt (shared utility)
+    const creature = await loadCreatureForPrompt(creatureId);
+    const characterSystem = creature ? buildCharacterSystem(creature) : '';
 
-    // Build messages from DB history (server-authoritative, prevents cross-character contamination)
-    // The current user message was already persisted above, so it's included in the query results
-    const historyRows = await query<{ role: string; content: string }>(
-      `SELECT role, content FROM chat_messages
-       WHERE user_id = $1 AND creature_id = $2
-       ORDER BY created_at DESC LIMIT 20`,
-      [userId, creatureId]
-    );
-    const alanMessages: Array<{ role: string; content: string }> = historyRows.reverse();
+    // Server-authoritative history (includes the user message we just inserted)
+    const alanMessages = await getRecentHistory(userId, creatureId);
 
-    // Call Alan Bot Service for AI reply (Anthropic API format)
+    // Call Alan with timeout
     let replyContent = "I'm here to chat! (AI service is currently unavailable)";
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ALAN_TIMEOUT);
+
     try {
       const alanRes = await fetch(`${ALAN_URL}/v1/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           model: 'alan',
           max_tokens: 1024,
@@ -83,12 +68,13 @@ export async function POST(
 
       if (alanRes.ok) {
         const alanData = await alanRes.json();
-        // Anthropic format: { content: [{ type: 'text', text: '...' }] }
         const textBlock = alanData.content?.find?.((b: any) => b.type === 'text');
         replyContent = textBlock?.text || alanData.reply || alanData.message || replyContent;
       }
     } catch {
-      // Alan unavailable — use fallback reply
+      // Alan unavailable or timed out — use fallback reply
+    } finally {
+      clearTimeout(timer);
     }
 
     // Persist assistant reply
@@ -99,18 +85,13 @@ export async function POST(
       [userId, creatureId, replyContent]
     );
 
-    const updatedProfile = await queryOne<{ energy: number }>(
-      'SELECT energy FROM user_profiles WHERE user_id = $1',
-      [userId]
-    );
-
     return NextResponse.json({
       reply: {
         id: assistantMsg!.id,
         content: replyContent,
         createdAt: assistantMsg!.created_at,
       },
-      energyRemaining: updatedProfile?.energy ?? 0,
+      energyRemaining: remaining,
     });
   } catch (err) {
     if (err instanceof Error && err.message === 'Unauthorized') {
