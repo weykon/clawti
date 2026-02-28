@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { useUIStore } from '@/src/store/useUIStore';
@@ -47,6 +47,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     useUIStore.setState({ language: lang as 'en' | 'zh' });
   }, []);
 
+  // Wire up 401 auto-logout: expired tokens trigger logout + public data reload
+  useEffect(() => {
+    api.onUnauthorized(() => {
+      useAuthStore.setState({ isLoggedIn: false, profileData: null });
+    });
+  }, []);
+
   // Initialize: validate token + load data
   useEffect(() => {
     if (api.getToken()) {
@@ -65,11 +72,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Post-login data refresh: load user data when login state transitions false → true
+  const prevLoggedIn = useRef(isLoggedIn);
+  useEffect(() => {
+    if (isLoggedIn && !prevLoggedIn.current) {
+      loadUserData();
+    }
+    if (!isLoggedIn && prevLoggedIn.current) {
+      loadPublicDiscover();
+    }
+    prevLoggedIn.current = isLoggedIn;
+  }, [isLoggedIn]);
+
   const loadPublicDiscover = () => {
     api.creatures.discover({ limit: 50 }).then(res => {
-      const discovered = res?.creatures || [];
+      const discovered = Array.isArray(res) ? res : (res?.creatures || []);
       if (discovered.length > 0) setCharacters(discovered.map(creatureToCharacter));
-    }).catch(() => {});
+    }).catch(err => console.warn('Failed to load discover:', err));
   };
 
   const loadUserData = async () => {
@@ -83,13 +102,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         setProfileData(profileRes);
         setEnergy(profileRes.energy ?? 1000);
       }
-      const discovered = discoverRes?.creatures || [];
+      const discovered = Array.isArray(discoverRes) ? discoverRes : (discoverRes?.creatures || []);
       if (discovered.length > 0) {
         setCharacters(discovered.map(creatureToCharacter));
       }
       const friendsData = 'friends' in friendsRes ? friendsRes.friends : [];
       if (Array.isArray(friendsData)) {
-        setFriends(friendsData.map((f: any) => {
+        setFriends(friendsData.map((f: unknown) => {
           const creature = typeof f === 'object' && f !== null && 'creature' in f ? f.creature : f;
           return creatureToCharacter(creature);
         }));
