@@ -261,9 +261,10 @@ function ChatConversation({
             type="text"
             value={inputText}
             onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onSend()}
+            onKeyDown={(e) => e.key === 'Enter' && !isTyping && onSend()}
             placeholder={energy > 0 ? t.typeMessage : t.outOfEnergy}
             disabled={energy <= 0}
+            maxLength={5000}
             className="flex-1 bg-transparent border-none py-4 px-3 text-sm focus:outline-none disabled:opacity-50 font-medium text-white placeholder:text-white/30"
           />
           <div className="flex items-center gap-1 pr-1">
