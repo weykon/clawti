@@ -66,7 +66,16 @@ export const POST = authRoute(async (req) => {
     return NextResponse.json({ error: 'LLM API key not configured' }, { status: 500 });
   }
 
-  const prompt = FIELD_PROMPTS[field](context || {});
+  // Whitelist and sanitize context to prevent prompt injection
+  const allowedKeys = ['name', 'gender', 'age', 'personality', 'occupation', 'appearanceStyle'];
+  const safeCtx: Record<string, unknown> = {};
+  for (const key of allowedKeys) {
+    if (context?.[key] != null) {
+      safeCtx[key] = typeof context[key] === 'string' ? context[key].slice(0, 500) : context[key];
+    }
+  }
+
+  const prompt = FIELD_PROMPTS[field](safeCtx);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT);

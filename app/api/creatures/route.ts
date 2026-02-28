@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/src/lib/db';
 import { authRoute } from '@/src/lib/apiRoute';
 
+/** Truncate a string field to max length, defaulting to empty string */
+function str(val: unknown, maxLen: number): string {
+  return typeof val === 'string' ? val.slice(0, maxLen) : '';
+}
+
 export const POST = authRoute(async (req, { userId }) => {
   const body = await req.json();
   const { name, card, metadata, mode } = body;
@@ -13,6 +18,11 @@ export const POST = authRoute(async (req, { userId }) => {
   if (name.length > 100) {
     return NextResponse.json({ error: 'Name too long (max 100 chars)' }, { status: 400 });
   }
+
+  // Validate photos array
+  const photos = Array.isArray(metadata?.photos)
+    ? metadata.photos.filter((p: unknown): p is string => typeof p === 'string').slice(0, 10)
+    : [];
 
   // Atomic energy deduction — prevents race conditions from concurrent creation requests
   const deducted = await queryOne<{ energy: number }>(
@@ -29,16 +39,16 @@ export const POST = authRoute(async (req, { userId }) => {
      RETURNING id`,
     [
       userId,
-      name,
-      metadata?.bio || '',
-      card?.personality || '',
-      card?.firstMes || '',
-      card?.firstMes || '',
-      metadata?.gender || '',
-      metadata?.age || null,
-      metadata?.occupation || '',
-      metadata?.worldDescription || card?.description || '',
-      metadata?.photos || [],
+      name.slice(0, 100),
+      str(metadata?.bio, 2000),
+      str(card?.personality, 2000),
+      str(card?.firstMes, 2000),
+      str(card?.firstMes, 2000),
+      str(metadata?.gender, 20),
+      typeof metadata?.age === 'number' ? Math.max(0, Math.min(9999, metadata.age)) : null,
+      str(metadata?.occupation, 200),
+      str(metadata?.worldDescription || card?.description, 5000),
+      photos,
     ]
   );
 
