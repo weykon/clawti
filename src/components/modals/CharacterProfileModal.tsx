@@ -57,12 +57,14 @@ export function CharacterProfileModal() {
             <div className="absolute inset-0 flex items-center justify-between px-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(currentImageIndex > 0 ? currentImageIndex - 1 : images.length - 1); }}
+                aria-label="Previous image"
                 className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(currentImageIndex < images.length - 1 ? currentImageIndex + 1 : 0); }}
+                aria-label="Next image"
                 className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white"
               >
                 <ChevronRight className="w-5 h-5" />
@@ -78,6 +80,7 @@ export function CharacterProfileModal() {
 
             <button
               onClick={() => setCharProfileOpen(false)}
+              aria-label="Close profile"
               className="absolute top-6 right-6 w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white z-10"
             >
               <X className="w-5 h-5" />

@@ -62,6 +62,7 @@ export function ChatView() {
             </div>
             <button
               onClick={() => setFriendsListOpen(true)}
+              aria-label="Open friends list"
               className="p-3 rounded-2xl bg-white border border-ramos-border text-ramos-black hover:bg-ramos-gray transition-all shadow-sm"
             >
               <Users className="w-5 h-5" />
@@ -172,13 +173,13 @@ function ChatConversation({
   return (
     <div className="h-full flex flex-col relative z-10">
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <img src={selectedCharacter.avatar} alt="" className="w-full h-full object-cover opacity-50" referrerPolicy="no-referrer" />
+        <img src={selectedCharacter.avatar} alt="" aria-hidden="true" className="w-full h-full object-cover opacity-50" referrerPolicy="no-referrer" />
         <div className="absolute inset-0 bg-black/60" />
       </div>
 
       {/* Chat Header */}
       <div className="px-6 py-8 border-b border-white/10 flex items-center gap-6 bg-black/30 backdrop-blur-2xl sticky top-0 z-20 text-white">
-        <button onClick={onBack} className="md:hidden p-3 -ml-2 rounded-2xl hover:bg-white/10 transition-colors">
+        <button onClick={onBack} aria-label="Back to chat list" className="md:hidden p-3 -ml-2 rounded-2xl hover:bg-white/10 transition-colors">
           <ArrowLeft className="w-7 h-7" />
         </button>
         <div className="flex items-center gap-5 cursor-pointer" onClick={onProfileOpen}>
@@ -254,7 +255,7 @@ function ChatConversation({
       {/* Input */}
       <div className="fixed bottom-12 left-0 right-0 max-w-md mx-auto px-6 z-30 md:relative md:bottom-0 md:max-w-none md:pb-12 md:pt-4 bg-transparent">
         <div className="relative flex items-center bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[40px] p-2 shadow-2xl">
-          <button className="p-3 text-white/60 hover:text-white transition-colors">
+          <button aria-label="Voice input" className="p-3 text-white/60 hover:text-white transition-colors">
             <Mic className="w-5 h-5" />
           </button>
           <input
@@ -268,12 +269,13 @@ function ChatConversation({
             className="flex-1 bg-transparent border-none py-4 px-3 text-sm focus:outline-none disabled:opacity-50 font-medium text-white placeholder:text-white/30"
           />
           <div className="flex items-center gap-1 pr-1">
-            <button className="p-3 text-white/60 hover:text-white transition-colors">
+            <button aria-label="Send gift" className="p-3 text-white/60 hover:text-white transition-colors">
               <Gift className="w-5 h-5" />
             </button>
             <button
               onClick={onSend}
               disabled={!inputText.trim() || isTyping || energy <= 0}
+              aria-label="Send message"
               className="p-3 text-white/60 hover:text-white disabled:opacity-30 transition-all"
             >
               <Send className="w-5 h-5" />

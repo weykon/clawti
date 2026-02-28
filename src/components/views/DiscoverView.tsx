@@ -55,6 +55,7 @@ export function DiscoverView() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setFilterOpen(true)}
+            aria-label="Open filters"
             className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/40 transition-all"
           >
             <Filter className="w-5 h-5" />
@@ -167,12 +168,14 @@ export function DiscoverView() {
                       <div className="flex items-center justify-center gap-6 pt-2 pb-4 pointer-events-auto">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleSwipe('left'); }}
+                          aria-label="Skip character"
                           className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-all"
                         >
                           <X className="w-6 h-6" />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleSwipe('right'); }}
+                          aria-label="Add to friends"
                           className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-ramos-accent hover:bg-ramos-accent hover:text-white transition-all shadow-lg"
                         >
                           <Heart className="w-6 h-6 fill-current" />

@@ -34,7 +34,7 @@ export function SettingsModal() {
         >
           <div className="flex items-center justify-between">
             <h3 className="text-2xl text-display">{t.accountSettings}</h3>
-            <button onClick={() => setSettingsOpen(false)} className="p-2 rounded-full hover:bg-ramos-gray">
+            <button onClick={() => setSettingsOpen(false)} aria-label="Close settings" className="p-2 rounded-full hover:bg-ramos-gray">
               <X className="w-6 h-6" />
             </button>
           </div>

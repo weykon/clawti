@@ -25,6 +25,8 @@ export function FriendsListModal() {
         onClick={() => setFriendsListOpen(false)}
       >
         <motion.div
+          role="dialog"
+          aria-label="Friends list"
           initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
           className="w-full max-w-md bg-white rounded-t-[40px] p-8 space-y-8"
@@ -32,7 +34,7 @@ export function FriendsListModal() {
         >
           <div className="flex items-center justify-between">
             <h3 className="text-2xl text-display">{t.friendsList}</h3>
-            <button onClick={() => setFriendsListOpen(false)} className="p-2 rounded-full hover:bg-ramos-gray"><X className="w-6 h-6" /></button>
+            <button onClick={() => setFriendsListOpen(false)} aria-label="Close friends list" className="p-2 rounded-full hover:bg-ramos-gray"><X className="w-6 h-6" /></button>
           </div>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
             {(friends.length > 0 ? friends : characters).map(char => (
