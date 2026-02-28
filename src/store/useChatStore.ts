@@ -202,7 +202,8 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
 
-      while (true) {
+      let streamDone = false;
+      while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -212,13 +213,11 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const data = line.slice(6).trim();
-          if (data === '[DONE]') break;
+          if (data === '[DONE]') { streamDone = true; break; }
 
           try {
             const parsed = JSON.parse(data);
-            // Anthropic format: content_block_delta has delta.text
             if (parsed.delta?.text) appendToken(charId, parsed.delta.text);
-            // Simple format fallback: { t: "token" }
             else if (parsed.t) appendToken(charId, parsed.t);
             if (parsed.energyRemaining != null) onEnergyUpdate(parsed.energyRemaining);
           } catch {

@@ -188,16 +188,11 @@ export function RechargeModal() {
                         return;
                       }
 
-                      const res = await fetch('/api/stripe/checkout', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ priceKey }),
-                      });
-                      const data = await res.json();
+                      const data = await api.stripe.checkout(priceKey);
                       if (data.url) {
                         window.location.href = data.url;
                       } else {
-                        showRechargeNotice(data.error || 'Checkout failed');
+                        showRechargeNotice('Checkout failed');
                       }
                     } catch {
                       showRechargeNotice('Payment service unavailable');

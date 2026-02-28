@@ -162,6 +162,11 @@ class ApiClient {
       this.request<{ taskId: string }>('POST', '/generate/image', { characterData, types }),
   };
 
+  stripe = {
+    checkout: (priceKey: string) =>
+      this.request<{ url: string }>('POST', '/stripe/checkout', { priceKey }),
+  };
+
   feed = {
     list: (tab = 'recommended', limit = 20, offset = 0) =>
       this.request<FeedListResponse>('GET', `/feed?tab=${tab}&limit=${limit}&offset=${offset}`),

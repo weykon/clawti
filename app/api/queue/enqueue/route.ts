@@ -1,38 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/src/lib/db';
-import { requireAuth } from '@/src/lib/requireAuth';
+import { NextResponse } from 'next/server';
+import { queryOne } from '@/src/lib/db';
+import { authRoute } from '@/src/lib/apiRoute';
 
-export async function POST(req: NextRequest) {
-  let userId: string;
-  try {
-    ({ userId } = requireAuth(req));
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+const VALID_TYPES = ['create_creature', 'import_card', 'heartbeat'];
+
+export const POST = authRoute(async (req, { userId }) => {
+  const { type, payload } = await req.json();
+
+  if (!type || typeof type !== 'string' || !VALID_TYPES.includes(type)) {
+    return NextResponse.json({ error: `Invalid type. Must be one of: ${VALID_TYPES.join(', ')}` }, { status: 400 });
   }
 
-  try {
-    const { type, payload } = await req.json();
-
-    const validTypes = ['create_creature', 'import_card', 'heartbeat'];
-    if (!validTypes.includes(type)) {
-      return NextResponse.json({ error: `Invalid type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
-    }
-
-    if (!payload) {
-      return NextResponse.json({ error: 'Payload is required' }, { status: 400 });
-    }
-
-    const result = await pool.query(
-      'INSERT INTO task_queue (user_id, type, payload) VALUES ($1, $2, $3) RETURNING id',
-      [userId, type, JSON.stringify(payload)]
-    );
-
-    return NextResponse.json({ taskId: result.rows[0].id });
-  } catch (err) {
-    console.error('Enqueue error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal server error' },
-      { status: 500 }
-    );
+  if (!payload || typeof payload !== 'object') {
+    return NextResponse.json({ error: 'Payload is required and must be an object' }, { status: 400 });
   }
-}
+
+  const row = await queryOne<{ id: string }>(
+    'INSERT INTO task_queue (user_id, type, payload) VALUES ($1, $2, $3) RETURNING id',
+    [userId, type, JSON.stringify(payload)]
+  );
+
+  return NextResponse.json({ taskId: row!.id });
+});

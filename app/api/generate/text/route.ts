@@ -105,7 +105,7 @@ export const POST = authRoute(async (req) => {
       const errText = await res.text().catch(() => 'LLM service error');
       console.error(`[generate/text] LLM returned ${res.status} for field="${field}":`, errText);
       return NextResponse.json(
-        { error: `Generation failed (${res.status})` },
+        { error: 'AI generation service temporarily unavailable. Please try again.' },
         { status: 502 }
       );
     }
